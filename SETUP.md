@@ -1,7 +1,59 @@
 # SETUP.md — 설치와 운영 절차
 
-이 문서는 사용자가 직접 하는 일만 순서대로 적는다. 비밀값(키, 토큰, 개인키)은 채팅이나 파일에 적지 않는다.
-경로는 전부 환경변수 `MEMORY_HOME` 기준이다. 시험 중에는 `~/memory-test` 를 쓰고, 실사용 전환(7장) 전까지 실제 `~/memory` 는 만들지 않는다.
+경로는 전부 환경변수 `MEMORY_HOME` 기준이다. 시험 중에는 `~/memory-test` 를 쓰고, 실사용 전환 전까지 실제 `~/memory` 는 만들지 않는다.
+비밀값(B2 키, age 개인키)은 채팅이나 파일에 적지 않는다. 마법사는 프롬프트로 받아 메모리에만 두고 키체인에만 쓴다.
+
+## 0. 빠른 길: `memory setup` 마법사
+
+아래 A~D 만 사람이 하고, 나머지는 마법사가 순서대로 묻고 실행한다.
+
+**A. 준비 (한 번)**
+
+1. Homebrew 설치: https://brew.sh
+2. Backblaze 계정을 만들고 **2단계 인증을 켠다**: https://www.backblaze.com/sign-up/cloud-storage
+3. B2 콘솔 → Application Keys → **Add a New Application Key**: 이름 `memory-setup-master`, Allow access to Bucket(s) = All, Type of Access = Read and Write, 나머지 기본. 생성 직후 화면의 keyID 와 applicationKey 를 **복사만** 해 둔다 (마법사가 물어볼 때 붙여 넣고, 끝나면 이 키를 콘솔에서 지운다). 마스터 키를 써도 된다.
+4. 프린터가 있으면 켜 둔다 (age 개인키 종이 사본).
+
+**B. 실행**
+
+```sh
+git clone <이 저장소> ~/memory-server-src
+cd ~/memory-server-src
+brew install uv && uv python install 3.11 && uv sync
+export MEMORY_HOME=~/memory-test
+uv run memory setup
+```
+
+마법사 단계와 하는 일:
+
+| 단계 | 하는 일 | 사람이 할 것 |
+| --- | --- | --- |
+| check | brew 로 age, rclone 설치, sqlite-vec 로딩 확인 | y 입력 |
+| init | `memory init`, doctor | 없음 |
+| desktop | Claude Desktop 설정에 memory 서버 병합 (원본은 .bak), 프로젝트 지침 원문을 `reports/client_instructions.txt` 로 | Claude Desktop 재시작, 지침 붙여 넣기 |
+| age | 키 생성, 개인키를 한 번 보여 줌, 인쇄용 파일 열기, 마지막 6글자로 저장 확인, 공개키를 config 에 기록 | 비밀번호 관리자에 저장, 인쇄 |
+| b2 | 마스터 키로 버킷 생성(Object Lock, compliance 30일, 수명주기 39/1), 업로드 전용 키 생성(listFiles, readFiles, writeFiles, 버킷 한정), 키체인 저장, config 기록, rclone 접근 확인 | 마스터 keyID·applicationKey 입력, 버킷 이름 확인 |
+| backup | 첫 스냅샷 만들고 올리고 크기·해시 검증 | 없음 |
+| launchd | plist 설치, 로그인 시 + 1시간마다 점검 | 없음 |
+| t09 | 시험 객체 업로드 → 임시 삭제 권한 키로 삭제 시도(거부 확인) → 임시 키 삭제 → 업로드 키 권한 점검 → 저장소 비밀 검색 → `reports/t09.md` | 마스터 키 입력(같은 실행이면 재사용) |
+| t08 | `measure_t08.py --existing` 실행, `reports/t08.md` 작성, Claude Desktop 대화 두 개의 문구 출력 | Claude Desktop 에서 대화 두 번, 결과 기록 |
+| drill | 최신 스냅샷 내려받기 → 개인키 입력 → 안전 복원 → rebuild → 시험 질의 → `restore-drill-done` → `reports/t10.md` | 개인키 입력 (관리자 사본으로 1회, 종이 사본으로 1회) |
+| golive | (명시적으로만) 실제 MEMORY_HOME 에 새 vault, 같은 키·버킷으로 첫 백업, Desktop·launchd 전환. 시험 자료는 옮기지 않음 | `uv run memory setup golive` |
+
+단계 하나만 다시 하려면 `uv run memory setup b2` 처럼 이름을 준다. 마법사가 끝나면 `memory-setup-master` 키를 B2 콘솔에서 지운다.
+
+**C. 마법사가 못 하는 것**
+
+- B2 계정 가입과 2단계 인증, 마스터 키 발급 (웹 화면).
+- 종이 사본 인쇄와 보관 장소.
+- Claude Desktop 안에서 대화 두 번 (T08 의 "새 대화가 이전 내용을 이어 감").
+- 종이 사본 키로 하는 두 번째 복원 리허설의 "종이를 읽어 입력" 부분.
+
+**D. 결과 전달**
+
+`reports/t08.md`, `reports/t09.md`, `reports/t10.md` 를 커밋하거나 Claude Code 에 붙여 넣는다. 비밀값은 그 파일들에 들어가지 않는다.
+
+아래 1~7장은 마법사가 하는 일을 손으로 할 때의 절차다. 마법사가 어떤 단계에서 실패하면 그 장을 본다.
 
 ## 1. 서버 설치 (맥북)
 

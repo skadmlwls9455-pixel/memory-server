@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -201,6 +202,18 @@ def _cmd_stats(_: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_setup(args: argparse.Namespace) -> int:
+    from .setup.wizard import ALL_STEPS, Wizard
+
+    memory_home = Path(args.memory_home or os.environ.get("MEMORY_HOME") or (Path.home() / "memory-test")).expanduser()
+    server_dir = Path(args.server_dir).resolve() if args.server_dir else Path(__file__).resolve().parents[2]
+    w = Wizard(memory_home=memory_home, server_dir=server_dir, allow_non_mac=args.allow_non_mac)
+    if args.uv:
+        w.uv = Path(args.uv)
+    steps = args.steps or ALL_STEPS
+    return w.run(steps)
+
+
 def _cmd_serve(_: argparse.Namespace) -> int:
     from .server import run
 
@@ -226,6 +239,13 @@ def build_parser() -> argparse.ArgumentParser:
     p.set_defaults(func=_cmd_restore)
     sub.add_parser("restore-drill-done", help="복원 리허설 날짜를 기록한다").set_defaults(func=_cmd_restore_drill_done)
     sub.add_parser("stats", help="stats 를 출력한다").set_defaults(func=_cmd_stats)
+    p = sub.add_parser("setup", help="맥북 설치 마법사: check init desktop age b2 backup launchd t09 t08 drill [golive]")
+    p.add_argument("steps", nargs="*", help="실행할 단계. 비우면 golive 를 뺀 전부")
+    p.add_argument("--memory-home", default=None, help="기본: $MEMORY_HOME, 없으면 $HOME/memory-test")
+    p.add_argument("--server-dir", default=None)
+    p.add_argument("--uv", default=None)
+    p.add_argument("--allow-non-mac", action="store_true", help=argparse.SUPPRESS)
+    p.set_defaults(func=_cmd_setup)
     sub.add_parser("serve", help="MCP stdio 서버를 실행한다").set_defaults(func=_cmd_serve)
     return parser
 
