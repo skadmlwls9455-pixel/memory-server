@@ -143,7 +143,19 @@ def run() -> None:
         print(f"오류: {e}", file=sys.stderr)
         sys.exit(2)
     server = create_server(paths)
+    startup_doctor(paths)
     server.run(transport="stdio")
+
+
+def startup_doctor(paths: MemoryPaths) -> None:
+    """서버 시작 시 가벼운 doctor. 임베딩 모델을 올리지 않는다. 실패해도 서버는 뜬다."""
+    from .doctor import run_doctor
+
+    try:
+        report = run_doctor(paths, mode="light")
+        get_logger().info("startup %s", report.summary())
+    except Exception as e:  # noqa: BLE001
+        get_logger().exception("startup doctor failed type=%s", type(e).__name__)
 
 
 if __name__ == "__main__":  # pragma: no cover

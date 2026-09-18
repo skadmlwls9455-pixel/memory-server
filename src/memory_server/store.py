@@ -39,6 +39,7 @@ from .notes import (
     render_note,
 )
 from .paths import MemoryPaths
+from .secrets_guard import find_secret
 from .timeutil import now_local
 
 # 입력 상한 (SPEC 4)
@@ -113,12 +114,26 @@ class MemoryStore:
         config: Config | None = None,
         tag_rules: TagRules | None = None,
         now: Callable[[], datetime] = now_local,
+        crash_hook: Callable[[str], None] | None = None,
     ) -> None:
         self.paths = paths
         self.config = config if config is not None else load_config(paths.config_toml)
         self.tag_rules = tag_rules if tag_rules is not None else load_tag_rules(paths.tag_rules_yaml)
         self.now = now
         self.log = get_logger()
+        # 테스트 전용. 쓰기 절차의 지점 이름으로 불린다: after_note_written, before_supersede, before_event, before_index.
+        self._crash_hook = crash_hook
+
+    def _checkpoint(self, name: str) -> None:
+        if self._crash_hook is not None:
+            self._crash_hook(name)
+
+    def _require_git(self) -> None:
+        """.git 이 없으면 쓰기를 멈추고 백업 복원을 안내한다 (SPEC 5 doctor 표)."""
+        if not gitutil.is_repo(self.paths.vault):
+            from .doctor import NO_GIT_MESSAGE
+
+            raise MemoryError("VAULT_NOT_GIT", NO_GIT_MESSAGE, retryable=False)
 
     # ------------------------------------------------------------------ 검증
 
@@ -148,6 +163,16 @@ class MemoryStore:
             raise invalid_input("body 가 비어 있다.", field="body")
         if len(body_n) > LIMITS["body"]:
             raise invalid_input(f"body 는 {LIMITS['body']}자 이하여야 한다.", field="body", limit=LIMITS["body"])
+        for label, value in (("title", title_n), ("body", body_n)):
+            hit = find_secret(value)
+            if hit:
+                raise MemoryError(
+                    "SECRET_DETECTED",
+                    f"{label} 에 비밀 형식({hit})으로 보이는 문자열이 있다. 비밀번호, API 키, 토큰, 개인키는 저장하지 않는다.",
+                    retryable=False,
+                    field=label,
+                    pattern=hit,
+                )
         reserved = body_has_reserved_heading(body_n)
         if reserved:
             raise invalid_input(f"body 에 예약된 제목 '{reserved}' 줄을 넣을 수 없다.", field="body")
@@ -247,13 +272,13 @@ class MemoryStore:
 
     # ------------------------------------------------------------------ 중복 방지
 
-    def _find_recent_duplicate(self, input_hash: str, now: datetime, event_type: str = "created") -> str | None:
+    def _find_recent_duplicate(self, input_hash: str, now: datetime, event_types: tuple[str, ...] = ("created", "recovered")) -> str | None:
         window = timedelta(minutes=self.config.write.dedupe_window_minutes)
         since = now - window
         months = {(now.year, now.month), (since.year, since.month)}
         for year, month in sorted(months):
             for ev in iter_events(self.paths.events_file(year, month)):
-                if ev.type != event_type or ev.data.get("input_hash") != input_hash:
+                if ev.type not in event_types or ev.data.get("input_hash") != input_hash:
                     continue
                 try:
                     ts = datetime.fromisoformat(ev.ts)
@@ -309,6 +334,7 @@ class MemoryStore:
     ) -> WriteResult:
         try:
             with write_lock(self.paths.lock_file):
+                self._require_git()
                 return self._remember_locked(title, body, tags, type, source, fact_key, links, supersedes, reason)
         except LockTimeout as e:
             raise MemoryError("LOCKED", "다른 쓰기가 진행 중이라 잠금을 얻지 못했다. 잠시 뒤 다시 시도한다.", retryable=True) from e
@@ -361,10 +387,14 @@ class MemoryStore:
         warnings: list[str] = []
         changed: list[Path] = [path]
         self._write_new_file(path, render_note(note))
+        self._checkpoint("after_note_written")
         # 정정: 기존 노트의 status 와 superseded_by 만 바꾼다. 같은 잠금 안에서 끝난다.
+        if targets:
+            self._checkpoint("before_supersede")
         for old_path, _ in targets:
             mutations.set_status(old_path, "superseded", superseded_by=note_id)
             changed.append(old_path)
+        self._checkpoint("before_event")
         events_path = append_event(
             self.paths,
             "created",
@@ -374,6 +404,7 @@ class MemoryStore:
         )
         changed.append(events_path)
         # 여기까지 끝나면 saved=true
+        self._checkpoint("before_index")
         message = f"remember: {note_id}" + (f" supersedes {' '.join(inp.supersedes)}" if inp.supersedes else "")
         committed = self._commit(changed, message, warnings)
         self.log.info("tool=remember id=%s supersedes=%d committed=%s", note_id, len(targets), committed)
@@ -467,6 +498,7 @@ class MemoryStore:
     def amend(self, id: str, note: str) -> WriteResult:
         try:
             with write_lock(self.paths.lock_file):
+                self._require_git()
                 return self._amend_locked(id, note)
         except LockTimeout as e:
             raise MemoryError("LOCKED", "다른 쓰기가 진행 중이라 잠금을 얻지 못했다. 잠시 뒤 다시 시도한다.", retryable=True) from e
@@ -479,6 +511,15 @@ class MemoryStore:
             raise invalid_input("note 가 비어 있다.", field="note")
         if len(text) > LIMITS["note"]:
             raise invalid_input(f"note 는 {LIMITS['note']}자 이하여야 한다.", field="note", limit=LIMITS["note"])
+        hit = find_secret(text)
+        if hit:
+            raise MemoryError(
+                "SECRET_DETECTED",
+                f"note 에 비밀 형식({hit})으로 보이는 문자열이 있다. 비밀번호, API 키, 토큰, 개인키는 저장하지 않는다.",
+                retryable=False,
+                field="note",
+                pattern=hit,
+            )
         path, existing = self.load_note(id)
         note_id = existing.id
         if existing.frontmatter.status != "active":
@@ -492,12 +533,14 @@ class MemoryStore:
             )
         now = self.now()
         input_hash = _hash_payload({"tool": "amend", "id": note_id, "note": text})
-        if self._find_recent_duplicate(input_hash, now, event_type="amended") is not None:
+        if self._find_recent_duplicate(input_hash, now, event_types=("amended",)) is not None:
             self.log.info("tool=amend dedupe id=%s", note_id)
             return WriteResult(id=note_id, saved=True, indexed=False, committed=True, warnings=["DUPLICATE_INPUT: 10분 안에 같은 보충이 있어 다시 더하지 않는다."])
 
         line = mutations.append_amendment(path, now.date().isoformat(), text)
+        self._checkpoint("before_event")
         events_path = append_event(self.paths, "amended", [note_id], {"input_hash": input_hash}, ts=now)
+        self._checkpoint("before_index")
         warnings: list[str] = []
         committed = self._commit([path, events_path], f"amend: {note_id}", warnings)
         self.log.info("tool=amend id=%s committed=%s", note_id, committed)
@@ -508,6 +551,7 @@ class MemoryStore:
     def archive(self, id: str, reason: str) -> WriteResult:
         try:
             with write_lock(self.paths.lock_file):
+                self._require_git()
                 return self._archive_locked(id, reason)
         except LockTimeout as e:
             raise MemoryError("LOCKED", "다른 쓰기가 진행 중이라 잠금을 얻지 못했다. 잠시 뒤 다시 시도한다.", retryable=True) from e
@@ -515,6 +559,7 @@ class MemoryStore:
     def unarchive(self, id: str, reason: str) -> WriteResult:
         try:
             with write_lock(self.paths.lock_file):
+                self._require_git()
                 return self._unarchive_locked(id, reason)
         except LockTimeout as e:
             raise MemoryError("LOCKED", "다른 쓰기가 진행 중이라 잠금을 얻지 못했다. 잠시 뒤 다시 시도한다.", retryable=True) from e

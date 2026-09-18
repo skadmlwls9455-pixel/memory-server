@@ -27,6 +27,35 @@ def _cmd_init(_: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_doctor(_: argparse.Namespace) -> int:
+    from .doctor import run_doctor
+    from .logging_setup import setup_logging
+
+    paths = get_paths()
+    setup_logging(paths.server_log if paths.runtime.exists() else None)
+    report = run_doctor(paths, mode="full")
+    out = sys.stderr
+    print(report.summary(), file=out)
+    for rel in report.restored:
+        print(f"복원: {rel}", file=out)
+    for nid in report.recovered:
+        print(f"recovered: {nid}", file=out)
+    for nid in report.external_edits:
+        print(f"외부 수정: {nid}", file=out)
+    for fix in report.supersede_fixes:
+        print(f"정정 보정: {fix['old']} -> {fix['new']}", file=out)
+    for b in report.broken_notes:
+        print(f"깨진 노트: {b['path']} ({b['reason']})", file=out)
+    for w in report.warnings:
+        print(f"경고: {w}", file=out)
+    if report.commit:
+        print(f"커밋: {report.commit[:12]}", file=out)
+    if report.fatal:
+        print(report.fatal, file=out)
+        return 1
+    return 0
+
+
 def _cmd_serve(_: argparse.Namespace) -> int:
     from .server import run
 
@@ -39,6 +68,8 @@ def build_parser() -> argparse.ArgumentParser:
     sub = parser.add_subparsers(dest="command", required=True)
     p_init = sub.add_parser("init", help="MEMORY_HOME 아래 폴더와 vault Git 저장소를 만든다")
     p_init.set_defaults(func=_cmd_init)
+    p_doctor = sub.add_parser("doctor", help="vault 전체 검사와 복구를 실행한다")
+    p_doctor.set_defaults(func=_cmd_doctor)
     p_serve = sub.add_parser("serve", help="MCP stdio 서버를 실행한다")
     p_serve.set_defaults(func=_cmd_serve)
     return parser

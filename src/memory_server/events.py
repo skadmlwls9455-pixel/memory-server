@@ -90,5 +90,11 @@ def iter_events(path: Path) -> Iterator[Event]:
             raw = raw.strip()
             if not raw:
                 continue
-            obj = json.loads(raw)
+            try:
+                obj = json.loads(raw)
+            except json.JSONDecodeError:
+                # 중간의 깨진 줄은 건너뛴다. doctor 가 경고한다.
+                continue
+            if not isinstance(obj, dict) or "type" not in obj or "ts" not in obj:
+                continue
             yield Event(ts=obj["ts"], type=obj["type"], ids=list(obj.get("ids", [])), data=dict(obj.get("data", {})))
