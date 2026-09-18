@@ -41,6 +41,8 @@ RULES_SUMMARY = """\
 """
 
 REMEMBER_DESCRIPTION = "새 기억 노트를 저장한다. 주제 하나에 노트 하나.\n\n" + RULES_SUMMARY + """
+- title 은 사람이 읽는 제목만 쓴다 (예: '현재 근무 회사는 노을소프트'). type, fact_key, 괄호 메타데이터를 제목에 넣지 않는다. 그건 인자로 준다.
+- body 는 사실을 그대로 적는다. 분량을 채우려고 늘리지 않는다.
 응답: {id, saved, indexed, committed, warnings}. 셋은 서로 다른 상태다. 오류는 {error: {code, message, retryable}}.
 같은 입력이 10분 안에 다시 오면 새로 만들지 않고 기존 ID 를 돌려준다. 유사도 0.92 이상인 노트가 있으면 SIMILAR_EXISTS 경고를 같이 준다.
 """
@@ -52,7 +54,7 @@ RECALL_DESCRIPTION = """\
 - 결과 없음(empty=true, results=[])과 검색 장애(error.code=SEARCH_UNAVAILABLE 또는 REBUILD_REQUIRED)를 구분한다.
 - pending_index 가 0 보다 크면 최근 저장분이 아직 색인되지 않은 것이다.
 - 각 항목: id, title, tags, type, source, fact_key, status, similarity, path(vector|link|tag), heat.
-""" + RULES_SUMMARY
+"""
 
 READ_MEMORY_DESCRIPTION = """\
 ID 로 기억 노트 전문을 읽는다. 본문, 덧붙임, 상태, 대체 관계를 돌려준다. 보관·대체된 노트도 읽힌다.

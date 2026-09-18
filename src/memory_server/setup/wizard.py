@@ -462,7 +462,8 @@ class Wizard:
             shutil.rmtree(work, ignore_errors=True)
         if not ok:
             raise SetupAbort("복원 리허설 실패. 보고서를 Claude Code 에 붙인다.")
-        _say("종이 사본으로도 한 번 더 한다: memory setup drill")
+        if which == "1":
+            _say("종이 사본으로도 한 번 더 한다: memory setup drill")
 
     def step_golive(self) -> None:
         from ..cli import _backup_service
