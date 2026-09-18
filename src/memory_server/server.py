@@ -33,6 +33,7 @@ REMEMBER_DESCRIPTION = """\
 - source: user(사용자가 직접 말함) | document(문서에서 봄) | inference(모델 해석). inference 인데 reflection 이 아니면 거부한다.
 - fact_key: 'self/employer', 'project/기억시스템/status' 처럼 대상을 가리키는 안정된 문자열. 기존 키를 재사용한다.
 - 사실이 바뀌었거나 틀렸으면 supersedes=[기존 ID], reason 을 지정한다. 뜻을 뒤집지 않는 보충은 amend 를 쓴다.
+- 같은 fact_key 의 active 노트가 있는데 supersedes 에 그 ID 가 없으면 FACT_CONFLICT 로 거부하고 기존 노트의 ID 와 전문을 돌려준다. 그 ID 를 supersedes 에 넣어 한 번 더 호출하면 정정이 끝난다.
 - tags: '분류/이름' 두 단계. 분류는 주제, 사람, 프로젝트, 상태, 시기.
 - 저장할 것: 오래 가는 선호, 계속되는 프로젝트, 중요한 결정과 이유, 다시 참조할 사건.
 - 저장하지 않을 것: 비밀번호, API 키, 토큰, 복구 코드, 개인키, 사용자가 저장하지 말라고 한 내용. 일시적 감정이나 잡담을 성격으로 일반화하지 않는다.
@@ -40,6 +41,22 @@ REMEMBER_DESCRIPTION = """\
 
 응답: {id, saved, indexed, committed, warnings}. 셋은 서로 다른 상태다. 오류는 {error: {code, message, retryable}}.
 같은 입력이 10분 안에 다시 오면 새로 만들지 않고 기존 ID 를 돌려준다.
+"""
+
+AMEND_DESCRIPTION = """\
+active 노트의 `## 덧붙임` 아래에 날짜가 붙은 한 줄을 더한다. 뜻을 뒤집지 않는 보충에만 쓴다.
+사실이 바뀌었거나 틀렸으면 amend 대신 remember(supersedes=[기존 ID], reason=...) 로 정정한다.
+보관·대체된 노트는 거부한다. 덧붙임 1,000자 이하. 같은 보충이 10분 안에 다시 오면 더하지 않는다.
+"""
+
+ARCHIVE_DESCRIPTION = """\
+노트를 보관한다 (status=archived). 기본 회상에서 빠질 뿐 파일, Git 이력, 백업은 남는다.
+사용자가 지워 달라고 하면 이 점을 설명한다. 이미 보관 상태면 no_change=true. 대체된 노트는 거부한다.
+"""
+
+UNARCHIVE_DESCRIPTION = """\
+수동 보관을 해제한다 (archived -> active). 대체된 노트는 되살리지 않는다.
+fact 를 되살릴 때 같은 fact_key 의 active 노트가 있으면 FACT_CONFLICT 로 거부한다.
 """
 
 READ_MEMORY_DESCRIPTION = """\
@@ -103,7 +120,19 @@ def create_server(paths: MemoryPaths | None = None) -> MCPServer:
     def read_memory(id: str) -> dict[str, Any]:
         return _tool_call("read_memory", lambda: store().read_memory(id))
 
-    get_logger().info("server created tools=%d", 2)
+    @server.tool(name="amend", description=AMEND_DESCRIPTION)
+    def amend(id: str, note: str) -> dict[str, Any]:
+        return _tool_call("amend", lambda: store().amend(id, note).to_dict())
+
+    @server.tool(name="archive", description=ARCHIVE_DESCRIPTION)
+    def archive(id: str, reason: str) -> dict[str, Any]:
+        return _tool_call("archive", lambda: store().archive(id, reason).to_dict())
+
+    @server.tool(name="unarchive", description=UNARCHIVE_DESCRIPTION)
+    def unarchive(id: str, reason: str) -> dict[str, Any]:
+        return _tool_call("unarchive", lambda: store().unarchive(id, reason).to_dict())
+
+    get_logger().info("server created tools=%d", 5)
     return server
 
 

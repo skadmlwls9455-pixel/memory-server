@@ -82,3 +82,33 @@ SPEC.md에 없거나 두 갈래로 읽히는 부분을 정할 때 여기에 결�
 ### D-019 vault 저장소에 `core.quotePath=false`를 설정한다
 - 결정: init이 `core.quotePath`를 끈다.
 - 이유: 한글 파일명이 `git status`나 `ls-files`에서 8진수로 깨져 보이면 doctor의 경로 비교와 사람의 확인이 모두 불편하다. 동작에는 영향이 없다.
+
+## 1단계 1-3 정정, 보충, 보관
+
+### D-020 기존 노트 변경은 `mutations.py` 한 곳에서만 하고 결과를 바이트 단위로 검증한다
+- 결정: `append_amendment`는 결과가 `기존 내용 + 덧붙인 부분`인지, `set_status`는 frontmatter의 `status`·`superseded_by` 줄 외에 한 바이트도 다르지 않은지 확인한 뒤에만 임시 파일과 rename으로 적용한다. 어긋나면 `ForbiddenChange`를 내고 쓰지 않는다.
+- 이유: SPEC 3.3의 "허용된 변경 세 가지"를 리뷰가 아니라 코드가 보장하게 한다. `store.py`에는 기존 파일에 쓰는 경로가 없다.
+
+### D-021 이미 대체된 노트는 다시 대체할 수 없다 (`INVALID_SUPERSEDES`)
+- 결정: `supersedes` 대상의 상태가 `superseded`면 거부하고 `superseded_by`를 알려 준다. `archived`인 노트는 대체할 수 있다.
+- 이유: 대체 사슬이 갈라지면 "현재 유효한 사실"이 둘이 된다. 보관은 회상 제외일 뿐이라 정정 대상이 될 수 있다.
+
+### D-022 보관된 fact의 `fact_key`는 새 active fact가 쓸 수 있고, 그 뒤 `unarchive`는 `FACT_CONFLICT`다
+- 결정: 유일성은 active 노트끼리만 본다. 보관된 노트를 되살릴 때 같은 키의 active 노트가 있으면 그 노트의 ID와 전문을 실어 거부한다.
+- 이유: SPEC 4장 "같은 키의 active 노트는 하나뿐"과 6장 "`unarchive`는 fact_key 충돌은 거부"를 그대로 따랐다.
+
+### D-023 정정은 `created` 이벤트 하나로 기록한다
+- 결정: 새 노트의 `created` 이벤트 data에 `supersedes`와 `reason`을 넣는다. 옛 노트의 상태 변경에 별도 이벤트를 남기지 않는다.
+- 이유: SPEC 3.4의 아홉 가지 이벤트에 `superseded`가 없고, 예시가 `created`에 `supersedes`를 싣는다. 새 노트, 옛 노트, 이벤트는 한 잠금 안에서 바뀌고 한 커밋에 들어간다.
+
+### D-024 대체된 노트의 `archive`는 `NOT_ACTIVE`로 거부한다
+- 결정: `archive`는 active 노트만 받는다. 이미 보관이면 `no_change`, 대체됐으면 거부.
+- 이유: 대체된 노트는 이미 기본 회상에서 빠져 있다. 상태를 `archived`로 바꾸면 `superseded_by` 정보와 상태가 어긋난다.
+
+### D-025 `archive`와 `unarchive`는 `reason`이 필수다
+- 결정: 비어 있으면 `INVALID_INPUT`. 이유는 이벤트 data에 남기고 노트에는 쓰지 않는다.
+- 이유: SPEC 6장이 두 도구 입력에 `reason`을 둔다. 노트 본문을 건드리지 않으면서 감사 기록은 이벤트 로그가 맡는다.
+
+### D-026 `amend`도 10분 중복 방지를 적용한다
+- 결정: 같은 노트에 같은 정규화 문장이 10분 안에 다시 오면 줄을 더하지 않고 `DUPLICATE_INPUT` 경고와 함께 같은 ID를 돌려준다. `amended` 이벤트의 `input_hash`로 판단하고 본문은 이벤트에 넣지 않는다.
+- 이유: SPEC 5장의 중복 방지는 "같은 도구에 같은 정규화 입력"이라 `remember`에 한정되지 않는다.

@@ -18,7 +18,7 @@ def anyio_backend():
 async def test_server_registers_stage1_tools(initialized):
     server = create_server(initialized)
     assert server.name == SERVER_NAME
-    assert sorted(t.name for t in await server.list_tools()) == ["read_memory", "remember"]
+    assert sorted(t.name for t in await server.list_tools()) == ["amend", "archive", "read_memory", "remember", "unarchive"]
     assert await server.list_resources() == []
     assert await server.list_prompts() == []
 
@@ -36,9 +36,9 @@ async def test_stdio_handshake_and_logging(initialized):
             info = await session.initialize()
             assert info.server_info.name == SERVER_NAME
             tools = await session.list_tools()
-            assert sorted(t.name for t in tools.tools) == ["read_memory", "remember"]
+            assert sorted(t.name for t in tools.tools) == ["amend", "archive", "read_memory", "remember", "unarchive"]
     log = initialized.server_log.read_text(encoding="utf-8")
-    assert "server created tools=2" in log
+    assert "server created tools=5" in log
 
 
 def test_server_without_memory_home_exits_2_with_empty_stdout():

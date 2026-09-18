@@ -268,12 +268,11 @@ def test_reserved_headings_in_body_rejected(store):
     assert _err(store, title="t", body="---\nid: x\n---").code == "INVALID_INPUT"
 
 
-def test_supersedes_requires_reason_and_is_not_implemented_yet(store):
+def test_supersedes_requires_reason(store):
     a = store.remember("A", "본문")
     e = _err(store, title="B", body="본문", supersedes=[a.id])
     assert e.code == "INVALID_INPUT" and e.details["field"] == "reason"
-    e = _err(store, title="B", body="본문", supersedes=[a.id], reason="바뀜")
-    assert e.code == "NOT_IMPLEMENTED"
+    assert _err(store, title="B", body="본문", supersedes=["20200101-000000-0000"], reason="r").code == "NOT_FOUND"
 
 
 def test_error_dict_shape(store):
