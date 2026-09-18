@@ -1,0 +1,64 @@
+{"title": "현재 근무 회사는 노을소프트", "body": "민서는 2025년 3월부터 노을소프트에서 백엔드 개발자로 일하고 있다. 팀은 결제 플랫폼팀이다.", "type": "fact", "source": "user", "fact_key": "self/employer", "tags": ["주제/직장"]}
+{"title": "이전 직장은 하늘커머스", "body": "민서는 2021년부터 2025년 2월까지 하늘커머스에서 주문 시스템을 맡았다. 퇴사 이유는 성장 정체였다.", "type": "episode", "source": "user", "tags": ["주제/직장", "시기/2025"]}
+{"title": "고양이 이름은 모찌", "body": "민서는 회색 고양이 한 마리를 키운다. 이름은 모찌이고 2023년 가을에 입양했다.", "type": "fact", "source": "user", "fact_key": "self/pet", "tags": ["주제/반려동물"]}
+{"title": "커피는 디카페인만 마신다", "body": "민서는 카페인에 민감해서 오후에는 디카페인 커피만 마신다. 아침에는 일반 커피 한 잔까지는 괜찮다.", "type": "fact", "source": "user", "fact_key": "self/preference/coffee", "tags": ["주제/식습관"]}
+{"title": "주말 취미는 실내 클라이밍", "body": "민서는 토요일 오전마다 동네 클라이밍장에 간다. 볼더링 V3 수준이고 목표는 연말까지 V4다.", "type": "fact", "source": "user", "fact_key": "self/hobby/climbing", "tags": ["주제/취미", "상태/진행중"]}
+{"title": "기억 시스템 프로젝트 시작", "body": "2026년 9월에 개인 AI 기억 시스템을 만들기 시작했다. 로컬 MCP 서버와 마크다운 노트, 벡터 검색 구조다.", "type": "episode", "source": "user", "tags": ["프로젝트/기억시스템", "시기/2026-09"]}
+{"title": "기억 시스템 진행 상태는 1단계 완료", "body": "기억 시스템은 저장 단계(1단계)를 마쳤고 회상과 core 단계를 진행 중이다.", "type": "fact", "source": "user", "fact_key": "project/기억시스템/status", "tags": ["프로젝트/기억시스템", "상태/진행중"]}
+{"title": "기억 시스템 백업은 B2 Object Lock", "body": "백업 저장소로 Backblaze B2를 고르고 Object Lock 30일 compliance 모드를 쓰기로 했다. 이유는 홧김에 지우는 걸 막기 위해서다.", "type": "episode", "source": "user", "tags": ["프로젝트/기억시스템"]}
+{"title": "임베딩 모델은 bge-m3로 결정", "body": "기억 시스템의 임베딩 모델은 BAAI bge-m3 1024차원으로 정했다. 한국어 성능과 무료 로컬 실행이 이유다. 경량 대안은 e5-small.", "type": "episode", "source": "user", "tags": ["프로젝트/기억시스템"]}
+{"title": "노을소프트 팀장은 지훈", "body": "결제 플랫폼팀 팀장 이름은 지훈이다. 주간 1:1은 화요일 오후 3시다.", "type": "fact", "source": "user", "fact_key": "work/manager", "tags": ["사람/지훈", "주제/직장"]}
+{"title": "동료 서연은 프론트엔드 담당", "body": "같은 팀 서연은 프론트엔드를 맡고 있고 결제 위젯 리뉴얼을 같이 진행한다.", "type": "fact", "source": "user", "fact_key": "work/colleague/서연", "tags": ["사람/서연", "주제/직장"]}
+{"title": "결제 위젯 리뉴얼 마감은 10월 말", "body": "결제 위젯 리뉴얼 프로젝트의 마감은 2026년 10월 31일이다. 민서는 결제 승인 API를 맡았다.", "type": "fact", "source": "user", "fact_key": "project/결제위젯/deadline", "tags": ["프로젝트/결제위젯", "상태/진행중"]}
+{"title": "결제 승인 API에 멱등키 도입 결정", "body": "중복 결제 사고를 막기 위해 결제 승인 API에 멱등키(idempotency key)를 넣기로 했다. 키는 클라이언트가 생성하고 24시간 보관한다.", "type": "episode", "source": "user", "tags": ["프로젝트/결제위젯"]}
+{"title": "사는 곳은 마포구", "body": "민서는 서울 마포구에 산다. 2024년 여름에 이사했고 회사까지 지하철로 35분 걸린다.", "type": "fact", "source": "user", "fact_key": "self/home", "tags": ["주제/생활"]}
+{"title": "운동은 아침 6시 반 달리기", "body": "평일 아침 6시 반에 한강에서 5km를 달린다. 비 오는 날은 쉰다.", "type": "fact", "source": "user", "fact_key": "self/routine/running", "tags": ["주제/운동", "상태/진행중"]}
+{"title": "2026년 목표는 하프 마라톤 완주", "body": "올해 목표는 11월 하프 마라톤을 2시간 안에 완주하는 것이다. 현재 10km 기록은 55분이다.", "type": "fact", "source": "user", "fact_key": "goal/2026/running", "tags": ["주제/운동", "시기/2026"]}
+{"title": "읽고 있는 책은 데이터 중심 애플리케이션 설계", "body": "요즘 '데이터 중심 애플리케이션 설계'를 읽고 있다. 9장 일관성과 합의 부분까지 왔다.", "type": "fact", "source": "user", "fact_key": "self/reading/current", "tags": ["주제/독서", "상태/진행중"]}
+{"title": "독서 모임은 격주 목요일", "body": "회사 근처 독서 모임에 격주 목요일 저녁 8시에 나간다. 다음 책은 '클린 아키텍처'다.", "type": "fact", "source": "user", "fact_key": "self/routine/bookclub", "tags": ["주제/독서", "주제/모임"]}
+{"title": "알레르기는 새우", "body": "민서는 새우 알레르기가 있다. 갑각류 전반을 피한다. 회식 메뉴를 고를 때 미리 말한다.", "type": "fact", "source": "user", "fact_key": "self/allergy", "tags": ["주제/건강"]}
+{"title": "치과 정기검진은 3월과 9월", "body": "치과 스케일링은 매년 3월과 9월에 받는다. 다니는 곳은 마포역 근처다.", "type": "fact", "source": "user", "fact_key": "self/health/dental", "tags": ["주제/건강"]}
+{"title": "부모님은 대전에 계신다", "body": "부모님은 대전에 사신다. 한 달에 한 번 주말에 내려간다. 어머니 생신은 5월 12일이다.", "type": "fact", "source": "user", "fact_key": "family/parents", "tags": ["사람/부모님", "주제/가족"]}
+{"title": "동생 민준은 부산에서 대학원", "body": "동생 민준은 부산에서 해양공학 석사 과정 중이다. 2027년 2월 졸업 예정.", "type": "fact", "source": "user", "fact_key": "family/sibling", "tags": ["사람/민준", "주제/가족"]}
+{"title": "노트북은 맥북 프로 M3 Pro 18GB", "body": "주력 노트북은 2024년에 산 맥북 프로 14인치 M3 Pro, 메모리 18GB, 저장공간 512GB다.", "type": "fact", "source": "user", "fact_key": "self/device/laptop", "tags": ["주제/장비"]}
+{"title": "에디터는 VS Code에 Vim 키맵", "body": "코드는 VS Code로 쓰고 Vim 키맵 확장을 켜 둔다. 터미널은 iTerm2에 zsh다.", "type": "fact", "source": "user", "fact_key": "self/preference/editor", "tags": ["주제/개발환경"]}
+{"title": "언어 선호는 파이썬과 고", "body": "새 프로젝트는 파이썬으로 빠르게 시작하고, 성능이 필요하면 Go로 옮기는 편이다. 자바는 필요할 때만 쓴다.", "type": "fact", "source": "user", "fact_key": "self/preference/language", "tags": ["주제/개발환경"]}
+{"title": "테스트는 pytest, 커버리지 80% 기준", "body": "파이썬 프로젝트는 pytest를 쓰고 커버리지 80% 아래로 떨어지면 PR을 막는 규칙을 둔다.", "type": "fact", "source": "user", "fact_key": "self/preference/testing", "tags": ["주제/개발환경", "주제/규칙"]}
+{"title": "회의록은 노션 대신 옵시디언", "body": "개인 메모와 회의록은 노션을 그만두고 옵시디언 로컬 vault로 옮겼다. 이유는 오프라인과 마크다운 원본 보존.", "type": "episode", "source": "user", "tags": ["주제/도구", "시기/2026-08"]}
+{"title": "사이드 프로젝트 가계부 앱은 중단", "body": "2025년에 만들던 가계부 앱 사이드 프로젝트는 시간이 없어 중단했다. 코드는 깃허브 비공개 저장소에 남겨 뒀다.", "type": "episode", "source": "user", "tags": ["프로젝트/가계부앱", "상태/중단"]}
+{"title": "여행 계획 11월 교토", "body": "11월 셋째 주에 교토로 4박 5일 여행을 계획 중이다. 단풍 시기에 맞췄고 숙소는 아직 안 잡았다.", "type": "fact", "source": "user", "fact_key": "plan/travel/2026-11", "tags": ["주제/여행", "시기/2026-11", "상태/진행중"]}
+{"title": "작년 여행은 제주 자전거 일주", "body": "2025년 10월에 제주도를 자전거로 3일 동안 일주했다. 서귀포 구간이 가장 힘들었다.", "type": "episode", "source": "user", "tags": ["주제/여행", "시기/2025-10"]}
+{"title": "차는 없고 따릉이를 탄다", "body": "자동차는 없다. 가까운 거리는 서울 공공자전거 따릉이를 타고 정기권을 끊어 둔다.", "type": "fact", "source": "user", "fact_key": "self/transport", "tags": ["주제/생활"]}
+{"title": "월세 계약 만료는 2027년 7월", "body": "지금 사는 집 월세 계약은 2027년 7월에 끝난다. 연장할지 이사할지는 내년 봄에 정한다.", "type": "fact", "source": "user", "fact_key": "self/home/lease", "tags": ["주제/생활", "시기/2027"]}
+{"title": "적금은 매달 25일 자동이체", "body": "급여일 다음 날인 25일에 적금과 연금저축이 자동이체된다. 비상금은 6개월치 생활비 기준.", "type": "fact", "source": "user", "fact_key": "finance/saving", "tags": ["주제/재정"]}
+{"title": "투자 원칙은 인덱스 펀드 장기 보유", "body": "개별 종목은 사지 않고 인덱스 펀드를 장기 보유한다. 시장이 흔들려도 매도하지 않는다는 규칙.", "type": "fact", "source": "user", "fact_key": "finance/principle", "tags": ["주제/재정", "주제/규칙"]}
+{"title": "영어 공부는 매일 15분 섀도잉", "body": "출근길에 팟캐스트로 15분 섀도잉을 한다. 목표는 내년 해외 컨퍼런스 발표.", "type": "fact", "source": "user", "fact_key": "self/routine/english", "tags": ["주제/공부", "상태/진행중"]}
+{"title": "2026 파이콘 한국 발표 신청", "body": "10월 파이콘 한국에 '개인 기억 시스템 만들기' 주제로 발표를 신청했다. 결과는 9월 말에 나온다.", "type": "episode", "source": "user", "tags": ["프로젝트/기억시스템", "주제/발표", "시기/2026-10"]}
+{"title": "친구 하린은 데이터 사이언티스트", "body": "대학 동기 하린은 스타트업에서 데이터 사이언티스트로 일한다. 분기마다 한 번 만나 근황을 나눈다.", "type": "fact", "source": "user", "fact_key": "friend/하린", "tags": ["사람/하린", "주제/친구"]}
+{"title": "하린과 다음 약속은 10월 둘째 주", "body": "하린과 10월 둘째 주 토요일 저녁에 만나기로 했다. 장소는 합정 근처로 정할 예정.", "type": "fact", "source": "user", "fact_key": "plan/meet/하린", "tags": ["사람/하린", "시기/2026-10"]}
+{"title": "선물 아이디어 어머니 생신", "body": "어머니 생신 선물로 무선 안마기와 카네이션 화분 중 고민 중이다. 작년에는 스카프를 드렸다.", "type": "episode", "source": "user", "tags": ["사람/부모님", "주제/선물"]}
+{"title": "모찌 병원은 연남동 동물병원", "body": "모찌가 다니는 동물병원은 연남동에 있다. 연 1회 예방접종은 10월이고 사료는 처방식이다.", "type": "fact", "source": "user", "fact_key": "pet/vet", "tags": ["주제/반려동물"]}
+{"title": "집 와이파이 공유기 교체", "body": "2026년 7월에 집 공유기를 Wi-Fi 6 모델로 바꿨다. 서재 방 신호가 약해 메시 확장기를 하나 더 달았다.", "type": "episode", "source": "user", "tags": ["주제/장비", "시기/2026-07"]}
+{"title": "키보드는 저소음 적축", "body": "사무실과 집 모두 저소음 적축 기계식 키보드를 쓴다. 청축은 시끄러워서 안 쓴다.", "type": "fact", "source": "user", "fact_key": "self/preference/keyboard", "tags": ["주제/장비"]}
+{"title": "점심은 회사 근처 국밥집 단골", "body": "점심은 회사 근처 순댓국집에 자주 간다. 새우가 들어간 메뉴는 피한다.", "type": "fact", "source": "user", "fact_key": "self/preference/lunch", "tags": ["주제/식습관"]}
+{"title": "술은 거의 마시지 않는다", "body": "회식에서도 맥주 한 잔 정도만 마신다. 다음 날 달리기에 영향이 있어서다.", "type": "fact", "source": "user", "fact_key": "self/preference/alcohol", "tags": ["주제/식습관", "주제/건강"]}
+{"title": "수면은 11시 취침 6시 기상", "body": "밤 11시에 자고 아침 6시에 일어난다. 주말에도 7시를 넘기지 않으려 한다.", "type": "fact", "source": "user", "fact_key": "self/routine/sleep", "tags": ["주제/건강", "주제/생활"]}
+{"title": "PR 리뷰 규칙은 24시간 안에 응답", "body": "팀 규칙으로 PR 리뷰 요청에는 24시간 안에 응답한다. 큰 PR은 300줄 이하로 쪼갠다.", "type": "fact", "source": "user", "fact_key": "work/rule/review", "tags": ["주제/직장", "주제/규칙"]}
+{"title": "배포는 화요일과 목요일 오전", "body": "결제 플랫폼팀 배포 창은 화요일과 목요일 오전 10시다. 금요일 배포는 금지.", "type": "fact", "source": "user", "fact_key": "work/rule/deploy", "tags": ["주제/직장", "주제/규칙"]}
+{"title": "장애 회고 2026년 8월 결제 지연", "body": "8월 14일 결제 승인이 20분간 지연된 장애가 있었다. 원인은 DB 커넥션 풀 고갈, 조치는 풀 크기 상향과 타임아웃 조정.", "type": "episode", "source": "user", "tags": ["주제/직장", "프로젝트/결제위젯", "시기/2026-08"]}
+{"title": "온콜은 4주에 한 번", "body": "결제 플랫폼팀 온콜 순번은 4주에 한 번 돌아온다. 다음 온콜 주간은 10월 첫째 주.", "type": "fact", "source": "user", "fact_key": "work/oncall", "tags": ["주제/직장", "시기/2026-10"]}
+{"title": "연차는 12일 남음", "body": "2026년 연차가 12일 남았다. 교토 여행에 3일 쓸 예정.", "type": "fact", "source": "user", "fact_key": "work/leave/remaining", "tags": ["주제/직장", "시기/2026"]}
+{"title": "노을소프트 연봉 협상은 매년 1월", "body": "회사 연봉 협상은 매년 1월에 한다. 올해는 성과 자료를 12월까지 정리해 두기로 했다.", "type": "fact", "source": "user", "fact_key": "work/salary/cycle", "tags": ["주제/직장", "시기/2027-01"]}
+{"title": "개발 블로그는 두 달째 쉬는 중", "body": "개인 개발 블로그는 7월 이후 글을 못 올렸다. 다음 글 주제는 멱등키 도입기.", "type": "fact", "source": "user", "fact_key": "self/blog/status", "tags": ["주제/글쓰기", "상태/중단"]}
+{"title": "사진 취미는 필름 카메라", "body": "가끔 필름 카메라로 사진을 찍는다. 카메라는 중고로 산 캐논 AE-1, 필름은 코닥 골드 200.", "type": "fact", "source": "user", "fact_key": "self/hobby/photo", "tags": ["주제/취미"]}
+{"title": "음악은 작업할 때 로파이", "body": "코딩할 때는 가사 없는 로파이나 피아노 음악을 튼다. 가사가 있으면 집중이 깨진다.", "type": "fact", "source": "user", "fact_key": "self/preference/music", "tags": ["주제/취미"]}
+{"title": "헬스장 등록은 취소함", "body": "2026년 4월에 등록한 헬스장은 두 달 쓰고 해지했다. 달리기와 클라이밍으로 충분하다고 판단.", "type": "episode", "source": "user", "tags": ["주제/운동", "시기/2026-06"]}
+{"title": "안경 도수 교체 2026년 5월", "body": "5월에 안경 도수를 바꿨다. 양쪽 -3.5, 블루라이트 차단 코팅.", "type": "episode", "source": "user", "tags": ["주제/건강", "시기/2026-05"]}
+{"title": "즐겨 보는 유튜브는 요리 채널", "body": "저녁에 요리 유튜브를 자주 본다. 주말에는 본 레시피로 파스타를 만든다.", "type": "fact", "source": "user", "fact_key": "self/preference/video", "tags": ["주제/취미"]}
+{"title": "집 근처 단골 카페는 디카페인이 맛있는 곳", "body": "집 근처 카페 '느린오후'는 디카페인 드립이 맛있어서 주말 아침마다 간다.", "type": "fact", "source": "user", "fact_key": "self/place/cafe", "tags": ["주제/생활", "주제/식습관"]}
+{"title": "AI 도구는 코드 리뷰 보조로만", "body": "AI 코딩 도구는 코드 리뷰 보조와 테스트 생성에만 쓰고, 설계 결정은 직접 한다는 원칙.", "type": "fact", "source": "user", "fact_key": "self/preference/ai-tools", "tags": ["주제/개발환경", "주제/규칙"]}
+{"title": "기억 시스템은 삭제 도구를 만들지 않기로", "body": "기억 시스템에는 삭제 도구를 두지 않기로 결정했다. 대신 archive와 Git 이력, 잠금 백업으로 복구 가능성을 확보한다.", "type": "episode", "source": "user", "tags": ["프로젝트/기억시스템"]}
+{"title": "기억 시스템 core는 1500자 제한", "body": "매 대화 시작에 읽는 core 요약은 1,500자 이하로 제한하고 근거 ID를 달기로 했다.", "type": "episode", "source": "user", "tags": ["프로젝트/기억시스템"]}
+{"title": "모델 해석: 민서는 규칙을 명문화하는 편", "body": "대화 패턴으로 볼 때 민서는 습관을 규칙으로 적어 두는 성향이 있는 것 같다. 확인된 사실은 아니다.", "type": "reflection", "source": "inference", "tags": ["주제/성향"]}
+{"title": "주간 회고는 일요일 저녁", "body": "매주 일요일 저녁에 30분 동안 한 주를 돌아보고 다음 주 할 일 세 가지를 정한다.", "type": "fact", "source": "user", "fact_key": "self/routine/review", "tags": ["주제/생활", "주제/규칙"]}
+{"title": "새 모니터는 27인치 4K", "body": "2026년 2월에 집 모니터를 27인치 4K로 바꿨다. 배율은 150%로 쓴다.", "type": "episode", "source": "user", "tags": ["주제/장비", "시기/2026-02"]}

@@ -18,7 +18,7 @@ def anyio_backend():
 async def test_server_registers_stage1_tools(initialized):
     server = create_server(initialized)
     assert server.name == SERVER_NAME
-    assert sorted(t.name for t in await server.list_tools()) == ["amend", "archive", "read_memory", "remember", "unarchive"]
+    assert sorted(t.name for t in await server.list_tools()) == ["amend", "archive", "get_core", "mark_used", "read_memory", "recall", "remember", "stats", "unarchive", "update_core"]
     assert await server.list_resources() == []
     assert await server.list_prompts() == []
 
@@ -36,9 +36,9 @@ async def test_stdio_handshake_and_logging(initialized):
             info = await session.initialize()
             assert info.server_info.name == SERVER_NAME
             tools = await session.list_tools()
-            assert sorted(t.name for t in tools.tools) == ["amend", "archive", "read_memory", "remember", "unarchive"]
+            assert sorted(t.name for t in tools.tools) == ["amend", "archive", "get_core", "mark_used", "read_memory", "recall", "remember", "stats", "unarchive", "update_core"]
     log = initialized.server_log.read_text(encoding="utf-8")
-    assert "server created tools=5" in log
+    assert "server created tools=10" in log
 
 
 def test_server_without_memory_home_exits_2_with_empty_stdout():
@@ -73,7 +73,7 @@ async def test_tools_via_stdio_roundtrip(initialized):
             assert "fact_key" in tools["remember"].description and "비밀번호" in tools["remember"].description
             res = await session.call_tool("remember", {"title": "왕복", "body": "본문", "tags": ["주제/테스트"]})
             data = res.structured_content or {}
-            assert data.get("saved") is True and data.get("indexed") is False
+            assert data.get("saved") is True and data.get("indexed") is True and data.get("committed") is True
             note_id = data["id"]
             res2 = await session.call_tool("read_memory", {"id": note_id})
             assert (res2.structured_content or {}).get("title") == "왕복"

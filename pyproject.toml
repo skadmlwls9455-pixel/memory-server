@@ -7,6 +7,9 @@ requires-python = ">=3.11"
 dependencies = [
     "mcp>=1.2",
     "pyyaml>=6.0",
+    "sqlite-vec>=0.1.6",
+    "sentence-transformers>=3.0",
+    "torch>=2.2",
 ]
 
 [project.scripts]
@@ -28,3 +31,12 @@ packages = ["src/memory_server"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-q"
+
+# 리눅스(CI, 컨테이너)에서는 CPU 전용 torch 를 받는다. macOS 는 PyPI 기본 휠(MPS 포함)을 쓴다.
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[tool.uv.sources]
+torch = [{ index = "pytorch-cpu", marker = "sys_platform == 'linux'" }]

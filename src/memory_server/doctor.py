@@ -37,7 +37,7 @@ NO_GIT_MESSAGE = (
     "vault 를 새로 init 하지 말 것."
 )
 
-Indexer = Callable[[Path], bool]  # 2단계에서 붙는다. 성공하면 True.
+Indexer = Callable[[Path], bool]  # 노트 하나를 색인한다. 성공하면 True.
 
 
 @dataclass
@@ -249,6 +249,7 @@ def run_doctor(
     *,
     mode: str = "full",
     indexer: Indexer | None = None,
+    pending_paths: Callable[[], list[Path]] | None = None,
     now: Callable[[], datetime] = now_local,
 ) -> DoctorReport:
     log = get_logger()
@@ -331,6 +332,17 @@ def run_doctor(
 
         # 6) 깨진 노트 목록 (추적 중인 것도 포함)
         _scan_broken(paths, report)
+
+        # 6b) DB 에 없거나 해시가 다른 노트 색인 (SPEC 5 표 "DB에 없는 노트", "다시 색인")
+        if pending_paths is not None:
+            for path in pending_paths():
+                rel = _rel(paths, path)
+                if rel in {b["path"] for b in report.broken_notes}:
+                    continue
+                label = _note_id_from_path(rel) or rel
+                if label in report.indexed or label in report.index_failed:
+                    continue
+                _index(indexer, path, label, report)
 
         # 7) 한 번에 커밋
         uniq: list[Path] = []
@@ -419,11 +431,32 @@ def _fix_supersedes(paths: MemoryPaths, report: DoctorReport) -> list[Path]:
 def _index(indexer: Indexer | None, path: Path, label: str, report: DoctorReport) -> None:
     if indexer is None:
         return
+    if label in report.indexed or label in report.index_failed:
+        return
     try:
         ok = indexer(path)
     except Exception:  # noqa: BLE001 - 색인 실패가 doctor 를 멈추면 안 된다
         ok = False
     (report.indexed if ok else report.index_failed).append(label)
+
+
+def indexer_from_app(app, *, light: bool) -> tuple[Indexer | None, Callable[[], list[Path]] | None]:
+    """App 에서 doctor 용 훅을 만든다. light 모드는 모델을 올리지 않는다: 이미 올라와 있을 때만 색인한다."""
+    if app.indexer is None:
+        return None, None
+    if light and not app.embedder.loaded():
+        return None, None
+
+    def index_one(path: Path) -> bool:
+        from .index.embedder import EmbeddingUnavailable
+
+        try:
+            app.indexer.index_path(path)
+            return True
+        except EmbeddingUnavailable:
+            return False
+
+    return index_one, app.indexer.pending
 
 
 def _persist(paths: MemoryPaths, report: DoctorReport) -> None:

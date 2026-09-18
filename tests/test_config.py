@@ -16,8 +16,8 @@ def test_default_config_parses_to_spec_values():
     cfg = parse_config(DEFAULT_CONFIG_TOML)
     assert cfg.embedding.model_id == "BAAI/bge-m3"
     assert cfg.embedding.dimension == 1024
-    assert cfg.recall.min_similarity == 0.45
-    assert cfg.recall.relevance_calibrated is False
+    assert cfg.recall.min_similarity == 0.45  # T05 로 조정한 값
+    assert cfg.recall.relevance_calibrated is True
     assert cfg.recall.epsilon == 0.02
     assert cfg.recall.similar_exists_threshold == 0.92
     assert cfg.heat.initial == 0.5
@@ -59,9 +59,16 @@ def test_invalid_values_rejected(text):
         parse_config(text)
 
 
-def test_no_secrets_in_default_config():
-    for needle in ("key", "token", "secret", "password"):
-        assert needle not in DEFAULT_CONFIG_TOML.lower()
+def test_no_secret_values_in_default_config():
+    from memory_server.secrets_guard import find_secret
+
+    assert find_secret(DEFAULT_CONFIG_TOML) is None
+    # 키체인 참조 이름만 있고 값은 없다
+    for line in DEFAULT_CONFIG_TOML.splitlines():
+        if "=" in line and not line.strip().startswith("#"):
+            key, _, value = line.partition("=")
+            assert "secret" not in key.lower() and "password" not in key.lower()
+            assert value.strip() in ('""', "true", "false") or not value.strip().startswith('"K0')
 
 
 def test_load_config_missing_file(paths):
@@ -72,7 +79,8 @@ def test_load_config_missing_file(paths):
 def test_load_after_init(initialized):
     cfg = load_config(initialized.config_toml)
     rules = load_tag_rules(initialized.tag_rules_yaml)
-    assert cfg.embedding.dimension == 1024
+    assert cfg.embedding.model_id == "fake/ngram-hash"  # 테스트 픽스처가 바꾼다
+    assert cfg.recall.min_similarity == 0.45
     assert set(rules.categories) == set(TAG_CATEGORIES)
 
 

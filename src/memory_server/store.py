@@ -18,7 +18,7 @@ import unicodedata
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Any, Callable
+from typing import TYPE_CHECKING, Any, Callable
 
 from . import gitutil, mutations
 from .config import Config, TagRules, load_config, load_tag_rules
@@ -41,6 +41,9 @@ from .notes import (
 from .paths import MemoryPaths
 from .secrets_guard import find_secret
 from .timeutil import now_local
+
+if TYPE_CHECKING:  # pragma: no cover
+    from .index.indexer import Indexer
 
 # 입력 상한 (SPEC 4)
 LIMITS = {
@@ -115,6 +118,7 @@ class MemoryStore:
         tag_rules: TagRules | None = None,
         now: Callable[[], datetime] = now_local,
         crash_hook: Callable[[str], None] | None = None,
+        indexer: "Indexer | None" = None,
     ) -> None:
         self.paths = paths
         self.config = config if config is not None else load_config(paths.config_toml)
@@ -123,6 +127,8 @@ class MemoryStore:
         self.log = get_logger()
         # 테스트 전용. 쓰기 절차의 지점 이름으로 불린다: after_note_written, before_supersede, before_event, before_index.
         self._crash_hook = crash_hook
+        # 2단계: 색인기. 없으면 indexed=false 로 둔다.
+        self.indexer = indexer
 
     def _checkpoint(self, name: str) -> None:
         if self._crash_hook is not None:
@@ -318,6 +324,41 @@ class MemoryStore:
             warnings.append(f"GIT_COMMIT_FAILED: 커밋에 실패했다. 다음 doctor 가 다시 시도한다. ({e.__class__.__name__})")
             return False
 
+    # ------------------------------------------------------------------ 색인 (SPEC 5 4단계)
+
+    def _index_after_write(self, path: Path, warnings: list[str], *, check_similar: bool = False) -> bool:
+        """DB 를 갱신하고 임베딩한다. 실패하면 indexed=false 로 두고 다음 doctor 가 처리한다."""
+        if self.indexer is None:
+            return False
+        from .index.embedder import EmbeddingUnavailable
+        from .index.indexer import IndexError_
+
+        try:
+            r = self.indexer.index_path(path, check_similar=check_similar)
+        except EmbeddingUnavailable as e:
+            self.log.warning("index skipped code=EMBEDDING_UNAVAILABLE")
+            warnings.append(f"INDEX_FAILED: 임베딩 모델을 쓸 수 없어 색인하지 못했다. 다음 doctor 가 다시 시도한다. ({e})")
+            return False
+        except (IndexError_, OSError, Exception) as e:  # noqa: BLE001
+            self.log.warning("index failed type=%s", type(e).__name__)
+            warnings.append(f"INDEX_FAILED: 색인에 실패했다 ({type(e).__name__}). 다음 doctor 가 다시 시도한다.")
+            return False
+        warnings.extend(r.warnings)
+        for other_id, sim in r.similar:
+            warnings.append(f"SIMILAR_EXISTS: 유사도 {sim:.2f} 인 active 노트 {other_id} 가 이미 있다. 같은 주제면 amend 나 supersedes 를 검토한다.")
+        return True
+
+    def _refresh_status_index(self, path: Path, warnings: list[str]) -> bool:
+        """상태만 바뀐 노트의 DB 행을 갱신한다. 벡터가 없으면 전체 색인으로 넘어간다."""
+        if self.indexer is None:
+            return False
+        try:
+            if self.indexer.refresh_status(path):
+                return True
+        except Exception as e:  # noqa: BLE001
+            self.log.warning("status refresh failed type=%s", type(e).__name__)
+        return self._index_after_write(path, warnings)
+
     # ------------------------------------------------------------------ 도구
 
     def remember(
@@ -405,10 +446,13 @@ class MemoryStore:
         changed.append(events_path)
         # 여기까지 끝나면 saved=true
         self._checkpoint("before_index")
+        indexed = self._index_after_write(path, warnings, check_similar=True)
+        for old_path, _ in targets:
+            self._refresh_status_index(old_path, warnings)
         message = f"remember: {note_id}" + (f" supersedes {' '.join(inp.supersedes)}" if inp.supersedes else "")
         committed = self._commit(changed, message, warnings)
-        self.log.info("tool=remember id=%s supersedes=%d committed=%s", note_id, len(targets), committed)
-        return WriteResult(id=note_id, saved=True, indexed=False, committed=committed, warnings=warnings)
+        self.log.info("tool=remember id=%s supersedes=%d indexed=%s committed=%s", note_id, len(targets), indexed, committed)
+        return WriteResult(id=note_id, saved=True, indexed=indexed, committed=committed, warnings=warnings)
 
     def _check_fact_conflict(self, fact_key: str, allowed: set[str]) -> None:
         for path, fm in self.iter_frontmatters():
@@ -542,9 +586,10 @@ class MemoryStore:
         events_path = append_event(self.paths, "amended", [note_id], {"input_hash": input_hash}, ts=now)
         self._checkpoint("before_index")
         warnings: list[str] = []
+        indexed = self._index_after_write(path, warnings)
         committed = self._commit([path, events_path], f"amend: {note_id}", warnings)
-        self.log.info("tool=amend id=%s committed=%s", note_id, committed)
-        return WriteResult(id=note_id, saved=True, indexed=False, committed=committed, warnings=warnings, extra={"line": line})
+        self.log.info("tool=amend id=%s indexed=%s committed=%s", note_id, indexed, committed)
+        return WriteResult(id=note_id, saved=True, indexed=indexed, committed=committed, warnings=warnings, extra={"line": line})
 
     # ------------------------------------------------------------------ archive / unarchive
 
@@ -593,9 +638,10 @@ class MemoryStore:
         mutations.set_status(path, "archived")
         events_path = append_event(self.paths, "archived", [note_id], {"reason": reason_n}, ts=now)
         warnings: list[str] = []
+        indexed = self._refresh_status_index(path, warnings)
         committed = self._commit([path, events_path], f"archive: {note_id}", warnings)
         self.log.info("tool=archive id=%s committed=%s", note_id, committed)
-        return WriteResult(id=note_id, saved=True, indexed=False, committed=committed, warnings=warnings, extra={"status": "archived", "no_change": False})
+        return WriteResult(id=note_id, saved=True, indexed=indexed, committed=committed, warnings=warnings, extra={"status": "archived", "no_change": False})
 
     def _unarchive_locked(self, id: str, reason: str) -> WriteResult:
         reason_n = self._require_reason(reason)
@@ -618,9 +664,66 @@ class MemoryStore:
         mutations.set_status(path, "active")
         events_path = append_event(self.paths, "unarchived", [note_id], {"reason": reason_n}, ts=now)
         warnings: list[str] = []
+        indexed = self._refresh_status_index(path, warnings)
         committed = self._commit([path, events_path], f"unarchive: {note_id}", warnings)
         self.log.info("tool=unarchive id=%s committed=%s", note_id, committed)
-        return WriteResult(id=note_id, saved=True, indexed=False, committed=committed, warnings=warnings, extra={"status": "active", "no_change": False})
+        return WriteResult(id=note_id, saved=True, indexed=indexed, committed=committed, warnings=warnings, extra={"status": "active", "no_change": False})
+
+    # ------------------------------------------------------------------ mark_used (SPEC 7.3)
+
+    def mark_used(self, ids: list[str]) -> dict[str, Any]:
+        if not isinstance(ids, list) or not ids or not all(isinstance(i, str) and i.strip() for i in ids):
+            raise invalid_input("ids 는 비어 있지 않은 ID 목록이어야 한다.", field="ids")
+        if len(ids) > 20:
+            raise invalid_input("ids 는 20개 이하여야 한다.", field="ids", limit=20)
+        if self.indexer is None:
+            raise MemoryError("INDEX_UNAVAILABLE", "DB 를 열 수 없어 열 점수를 갱신하지 못한다.", retryable=True)
+        try:
+            with write_lock(self.paths.lock_file):
+                self._require_git()
+                return self._mark_used_locked([i.strip() for i in dict.fromkeys(ids)])
+        except LockTimeout as e:
+            raise MemoryError("LOCKED", "다른 쓰기가 진행 중이라 잠금을 얻지 못했다. 잠시 뒤 다시 시도한다.", retryable=True) from e
+
+    def _mark_used_locked(self, ids: list[str]) -> dict[str, Any]:
+        from .recall.heat import reheat
+
+        db = self.indexer.db  # type: ignore[union-attr]
+        now = self.now()
+        cfg = self.config.heat
+        window = timedelta(hours=cfg.reheat_window_hours)
+        heated: list[str] = []
+        skipped: dict[str, str] = {}
+        for nid in ids:
+            row = db.get(nid)
+            if row is None:
+                skipped[nid] = "NOT_INDEXED" if find_note_by_id(self.paths, nid) else "NOT_FOUND"
+                continue
+            if row.status != "active":
+                skipped[nid] = "NOT_ACTIVE"
+                continue
+            if row.used_at:
+                try:
+                    if now - datetime.fromisoformat(row.used_at) < window:
+                        skipped[nid] = "RECENTLY_USED"
+                        continue
+                except ValueError:
+                    pass
+            try:
+                heat_at = datetime.fromisoformat(row.heat_at)
+            except ValueError:
+                heat_at = now
+            new_heat = reheat(row.heat, heat_at, now, cfg)
+            iso = now.isoformat(timespec="seconds")
+            db.set_heat(nid, new_heat, iso, iso)
+            heated.append(nid)
+        committed = True
+        warnings: list[str] = []
+        if heated:
+            events_path = append_event(self.paths, "used", heated, {}, ts=now)
+            committed = self._commit([events_path], f"used: {len(heated)}", warnings)
+        self.log.info("tool=mark_used heated=%d skipped=%d", len(heated), len(skipped))
+        return {"heated": heated, "skipped": skipped, "committed": committed, "warnings": warnings}
 
 
 def _hash_payload(payload: dict[str, Any]) -> str:

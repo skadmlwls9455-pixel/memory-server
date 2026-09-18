@@ -23,11 +23,17 @@ DEFAULT_CONFIG_TOML = """\
 model_id = "BAAI/bge-m3"
 dimension = 1024
 # 경량 대안: model_id = "intfloat/multilingual-e5-small", dimension = 384
+# device: "auto" 면 mps > cuda > cpu 순서로 고른다.
+device = "auto"
 
 [recall]
-# T05로 조정하기 전 초기값. 조정하면 relevance_calibrated = true로 바꾼다.
+# T05 (2026-09-18, data/eval, scripts/run_t05.py) 로 조정한 값.
+#   BAAI/bge-m3: 0.45 (가능 구간 0.435~0.50. 평가 정답 유사도 최소 0.499, 무관 1위 최대 0.423.
+#                구간 아래쪽을 고른 이유: 이름 없는 짧은 질의("회사 어디 다녀?")가 0.45 근처로 떨어진다)
+#   intfloat/multilingual-e5-small: 0.83 (가능 구간 0.82~0.84)
+# 모델을 바꾸면 run_t05.py 를 다시 돌려 이 값을 바꾸고, 그 전까지 relevance_calibrated = false 로 둔다.
 min_similarity = 0.45
-relevance_calibrated = false
+relevance_calibrated = true
 epsilon = 0.02
 similar_exists_threshold = 0.92
 
@@ -43,6 +49,13 @@ dedupe_window_minutes = 10
 [backup]
 min_interval_hours = 24
 stale_warning_hours = 48
+usage_warning_gb = 8
+# age 공개키 (age1...). 개인키는 절대 여기 두지 않는다.
+age_recipient = ""
+# rclone 원격과 경로. 예: "b2:my-memory-bucket". 자격증명은 macOS 키체인에 두고 아래 서비스 이름으로 읽는다.
+rclone_remote = ""
+keychain_service_key_id = "memory-b2-key-id"
+keychain_service_key = "memory-b2-key"
 """
 
 DEFAULT_TAG_RULES_YAML = """\
@@ -70,12 +83,13 @@ class ConfigError(ValueError):
 class EmbeddingConfig:
     model_id: str = "BAAI/bge-m3"
     dimension: int = 1024
+    device: str = "auto"
 
 
 @dataclass(frozen=True)
 class RecallConfig:
     min_similarity: float = 0.45
-    relevance_calibrated: bool = False
+    relevance_calibrated: bool = True
     epsilon: float = 0.02
     similar_exists_threshold: float = 0.92
 
@@ -97,6 +111,11 @@ class WriteConfig:
 class BackupConfig:
     min_interval_hours: float = 24.0
     stale_warning_hours: float = 48.0
+    usage_warning_gb: float = 8.0
+    age_recipient: str = ""
+    rclone_remote: str = ""
+    keychain_service_key_id: str = "memory-b2-key-id"
+    keychain_service_key: str = "memory-b2-key"
 
 
 @dataclass(frozen=True)

@@ -32,9 +32,12 @@ def test_init_creates_structure(paths):
     assert result.initial_commit is not None
 
 
-def test_init_files_are_loadable(initialized):
-    load_config(initialized.config_toml)
-    load_tag_rules(initialized.tag_rules_yaml)
+def test_init_files_are_loadable(paths):
+    init_memory_home(paths)
+    cfg = load_config(paths.config_toml)
+    assert cfg.embedding.model_id == "BAAI/bge-m3" and cfg.embedding.dimension == 1024
+    load_tag_rules(paths.tag_rules_yaml)
+    initialized = paths
     assert json.loads(initialized.core_json.read_text(encoding="utf-8")) == {"entries": []}
 
 

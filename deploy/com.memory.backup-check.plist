@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <!-- 로그인할 때와 1시간마다 `memory backup-check` 를 돌린다 (SPEC 8.2).
+       설치 전에 __HOME__, __MEMORY_HOME__, __SERVER_DIR__, __UV__ 를 바꾼다. SETUP.md 참고. -->
+  <key>Label</key>
+  <string>com.memory.backup-check</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>__UV__</string>
+    <string>run</string>
+    <string>--directory</string>
+    <string>__SERVER_DIR__</string>
+    <string>memory</string>
+    <string>backup-check</string>
+  </array>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>MEMORY_HOME</key>
+    <string>__MEMORY_HOME__</string>
+    <key>PATH</key>
+    <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+    <key>HOME</key>
+    <string>__HOME__</string>
+  </dict>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>StartInterval</key>
+  <integer>3600</integer>
+  <key>StandardOutPath</key>
+  <string>__MEMORY_HOME__/runtime/backup/launchd.log</string>
+  <key>StandardErrorPath</key>
+  <string>__MEMORY_HOME__/runtime/backup/launchd.log</string>
+  <key>ProcessType</key>
+  <string>Background</string>
+</dict>
+</plist>
