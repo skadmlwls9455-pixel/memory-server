@@ -194,7 +194,7 @@ def test_lock_timeout_returns_locked_error(initialized, clock):
     with write_lock(initialized.lock_file, timeout=1):
         s_fast = MemoryStore(initialized, now=clock)
         # 잠금 대기 시간을 줄이기 위해 내부 remember 를 짧은 timeout 으로 감싼다
-        import memory_server.store as store_mod
+        import memory_server.store.writes as store_mod
 
         original = store_mod.write_lock
         store_mod.write_lock = lambda p, timeout=30.0: original(p, timeout=0.2)

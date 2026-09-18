@@ -11,6 +11,7 @@ from __future__ import annotations
 import hashlib
 import math
 import re
+import threading
 from dataclasses import dataclass
 from typing import Protocol, Sequence
 
@@ -41,6 +42,8 @@ class Embedder(Protocol):
 
     def loaded(self) -> bool: ...
 
+    def preload(self) -> None: ...
+
 
 def is_e5(model_id: str) -> bool:
     return "e5" in model_id.lower()
@@ -62,9 +65,18 @@ class SentenceTransformerEmbedder:
         self._model = None
         self._revision = ""
         self.log = get_logger()
+        # 미리 로딩 스레드와 도구 호출이 동시에 올 수 있다. 로딩과 encode 를 한 잠금으로 직렬화한다.
+        self._lock = threading.RLock()
 
     def loaded(self) -> bool:
         return self._model is not None
+
+    def preload(self) -> None:
+        """백그라운드에서 모델을 올린다. 실패해도 조용히 로그만 남긴다 (첫 호출 때 다시 시도한다)."""
+        try:
+            self._load()
+        except EmbeddingUnavailable as e:
+            self.log.warning("preload failed: %s", e)
 
     @property
     def revision(self) -> str:
@@ -85,6 +97,10 @@ class SentenceTransformerEmbedder:
         return "cpu"
 
     def _load(self) -> None:
+        with self._lock:
+            self._load_locked()
+
+    def _load_locked(self) -> None:
         if self._model is not None:
             return
         try:
@@ -119,7 +135,8 @@ class SentenceTransformerEmbedder:
         limit = self._max_tokens()
         truncated = [self._token_len(t) > limit for t in prefixed]
         try:
-            vecs = self._model.encode(prefixed, normalize_embeddings=True, convert_to_numpy=True, batch_size=8)  # type: ignore[union-attr]
+            with self._lock:
+                vecs = self._model.encode(prefixed, normalize_embeddings=True, convert_to_numpy=True, batch_size=8)  # type: ignore[union-attr]
         except Exception as e:  # noqa: BLE001
             raise EmbeddingUnavailable(f"임베딩 실패 ({type(e).__name__}).") from e
         return EmbedResult(vectors=[[float(x) for x in v] for v in vecs], truncated=truncated)
@@ -127,7 +144,8 @@ class SentenceTransformerEmbedder:
     def embed_query(self, text: str) -> list[float]:
         self._load()
         try:
-            v = self._model.encode([with_prefix(self.model_id, text, "query")], normalize_embeddings=True, convert_to_numpy=True)[0]  # type: ignore[union-attr]
+            with self._lock:
+                v = self._model.encode([with_prefix(self.model_id, text, "query")], normalize_embeddings=True, convert_to_numpy=True)[0]  # type: ignore[union-attr]
         except Exception as e:  # noqa: BLE001
             raise EmbeddingUnavailable(f"임베딩 실패 ({type(e).__name__}).") from e
         return [float(x) for x in v]
@@ -168,6 +186,9 @@ class FakeEmbedder:
 
     def loaded(self) -> bool:
         return self._loaded
+
+    def preload(self) -> None:
+        self._loaded = True
 
     @property
     def revision(self) -> str:

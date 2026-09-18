@@ -216,3 +216,11 @@ SPEC.md에 없거나 두 갈래로 읽히는 부분을 정할 때 여기에 결�
 ### D-051 설치·시험 절차를 `memory setup` 마법사로 자동화한다
 - 결정: SETUP.md 의 사람 절차 중 B2 계정 가입·2FA·마스터 키 발급, 종이 인쇄, Claude Desktop 대화를 뺀 전부를 `memory setup` 이 실행한다. B2 버킷·잠금·수명주기·키는 B2 네이티브 API 를 직접 불러 만든다(외부 CLI 의존 없음). 마스터 키와 age 개인키는 `getpass` 로 받아 메모리에만 두고, 업로드 키만 키체인에 `security -i`(stdin)로 쓴다. `golive` 는 명시적으로 이름을 줄 때만 돈다.
 - 이유: 사용자가 이 부분을 모른다고 했고, 구현자는 클라우드 컨테이너라 사용자의 맥북·계정을 만질 수 없다. 비밀값을 채팅으로 받으면 대화 저장소와 저장소 커밋 경로에 남을 위험이 생긴다. 마법사는 사용자 기계 안에서만 비밀값을 다룬다. 마법사의 순수 부분(B2 API, 설정 병합, plist, config 편집)은 테스트했고 실행 부분은 맥에서만 검증된다.
+
+### D-052 서버 시작 직후 백그라운드에서 임베딩 모델을 미리 올린다 (`embedding.preload`, 기본 true)
+- 결정: `memory serve` 가 App 을 조립한 뒤 데몬 스레드에서 `embedder.preload()` 를 부른다. 실패해도 로그만 남기고 첫 호출 때 다시 시도한다. 로딩과 encode 는 한 잠금으로 직렬화한다. `preload = false` 로 끌 수 있다.
+- 이유: SPEC 2 는 "첫 recall 또는 첫 색인 때 올린다" 고 했는데, 그 뜻은 모델 로딩 실패가 저장을 막지 않게 하라는 것이다. 백그라운드 로딩은 그 성질을 유지하면서 첫 대화의 20초 대기를 없앤다. T08 에서 사용자가 체감한 지연이 이것이었다. SPEC 문구와 다른 점은 이 항목으로 기록한다.
+
+### D-053 `store.py` 를 패키지로 나누고 recall 응답 필드를 SPEC 6 의 목록으로 줄인다
+- 결정: `store/` = models(자료형·상한), validation(검증), base(공통·읽기), writes(쓰기 도구), usage(mark_used). `MemoryStore` 는 믹스인 합성이고 외부 import 경로(`memory_server.store.MemoryStore`)는 그대로다. recall 항목에서 `heat`, `created` 를 빼고 비어 있는 `tags`, `fact_key`, `warnings`, `pending_index` 키는 생략한다. recall·remember 설명문의 중복 규칙 요약을 remember 에만 둔다.
+- 이유: 700줄 한 파일은 읽기 어렵고, 응답과 설명문의 군더더기는 대화마다 토큰을 먹는다. `heat` 는 정렬에만 쓰이고 모델이 볼 이유가 없다. SPEC 6 이 정한 필드(id, 제목, 태그, type, source, fact_key, status, 유사도, 경로)만 남겼다.

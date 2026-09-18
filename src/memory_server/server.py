@@ -221,14 +221,38 @@ def startup_doctor(paths: MemoryPaths) -> None:
         get_logger().exception("startup doctor failed type=%s", type(e).__name__)
 
 
+def _preload_in_background(app) -> None:
+    """설정이 preload 면 모델을 데몬 스레드에서 올린다. 실패는 로그만 남고 첫 호출 때 다시 시도한다."""
+    import threading
+
+    if not app.config.embedding.preload:
+        return
+
+    def work() -> None:
+        start = time.perf_counter()
+        app.embedder.preload()
+        get_logger().info("preload done loaded=%s ms=%d", app.embedder.loaded(), int((time.perf_counter() - start) * 1000))
+
+    threading.Thread(target=work, name="memory-preload", daemon=True).start()
+
+
 def run() -> None:
     try:
         paths = get_paths()
     except MemoryHomeError as e:
         print(f"오류: {e}", file=sys.stderr)
         sys.exit(2)
-    server = create_server(paths)
+    app = None
+    try:
+        from .app import build_app
+
+        app = build_app(paths)
+    except Exception as e:  # noqa: BLE001 - 설정 오류는 첫 도구 호출 때 CONFIG_ERROR 로 알린다
+        get_logger().warning("app build deferred type=%s", type(e).__name__)
+    server = create_server(paths, app=app)
     startup_doctor(paths)
+    if app is not None:
+        _preload_in_background(app)
     server.run(transport="stdio")
 
 

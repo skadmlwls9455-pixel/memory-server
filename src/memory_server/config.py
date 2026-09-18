@@ -25,6 +25,8 @@ dimension = 1024
 # 경량 대안: model_id = "intfloat/multilingual-e5-small", dimension = 384
 # device: "auto" 면 mps > cuda > cpu 순서로 고른다.
 device = "auto"
+# 서버 시작 직후 백그라운드에서 모델을 올린다. 첫 recall 대기를 없앤다. 메모리를 아끼려면 false.
+preload = true
 
 [recall]
 # T05 (2026-09-18, data/eval, scripts/run_t05.py) 로 조정한 값.
@@ -84,6 +86,7 @@ class EmbeddingConfig:
     model_id: str = "BAAI/bge-m3"
     dimension: int = 1024
     device: str = "auto"
+    preload: bool = True
 
 
 @dataclass(frozen=True)

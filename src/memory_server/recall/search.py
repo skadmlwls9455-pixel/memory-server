@@ -53,16 +53,22 @@ class RecallItem:
     truncated_preview: bool = False
 
     def to_dict(self) -> dict[str, Any]:
-        d = {
-            "id": self.id, "title": self.title, "tags": self.tags, "type": self.type, "source": self.source,
-            "fact_key": self.fact_key, "status": self.status, "similarity": round(self.similarity, 4),
-            "path": self.path, "heat": round(self.heat, 4), "created": self.created,
+        """모델에게 주는 항목. SPEC 6 의 필드만: id, 제목, 태그, type, source, fact_key, status, 유사도, 경로.
+        heat 와 created 는 정렬에만 쓰고 응답에서 뺀다 (토큰 절약)."""
+        d: dict[str, Any] = {
+            "id": self.id, "title": self.title, "type": self.type, "source": self.source, "status": self.status,
+            "similarity": round(self.similarity, 3), "path": self.path,
         }
+        if self.tags:
+            d["tags"] = self.tags
+        if self.fact_key:
+            d["fact_key"] = self.fact_key
         if self.text is not None:
             d["text"] = self.text
         else:
             d["preview"] = self.preview
-            d["preview_truncated"] = self.truncated_preview
+            if self.truncated_preview:
+                d["preview_truncated"] = True
         return d
 
 
@@ -74,14 +80,14 @@ class RecallResult:
     warnings: list[str] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
-        return {
-            "results": [r.to_dict() for r in self.results],
-            "count": len(self.results),
-            "empty": not self.results,
-            "pending_index": self.pending_index,
-            "relevance_calibrated": self.calibrated,
-            "warnings": list(self.warnings),
-        }
+        d: dict[str, Any] = {"results": [r.to_dict() for r in self.results], "count": len(self.results), "empty": not self.results}
+        if self.pending_index:
+            d["pending_index"] = self.pending_index
+        if not self.calibrated:
+            d["relevance_calibrated"] = False
+        if self.warnings:
+            d["warnings"] = list(self.warnings)
+        return d
 
 
 def cosine(a: Sequence[float], b: Sequence[float]) -> float:
