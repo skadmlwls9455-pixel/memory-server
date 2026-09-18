@@ -41,6 +41,7 @@ def test_init_files_are_loadable(initialized):
 def test_vault_is_git_repo_with_precomposeunicode(initialized):
     assert gitutil.is_repo(initialized.vault)
     assert _git(initialized.vault, "config", "--get", "core.precomposeunicode") == "true"
+    assert _git(initialized.vault, "config", "--get", "core.quotePath") == "false"
     # 원격은 없어야 한다 (SPEC 8.1).
     assert _git(initialized.vault, "remote") == ""
 

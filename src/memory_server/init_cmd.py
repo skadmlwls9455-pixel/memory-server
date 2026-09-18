@@ -68,6 +68,8 @@ def init_memory_home(paths: MemoryPaths) -> InitResult:
         result.git_initialized = True
     # 한글 파일명의 NFC/NFD 차이로 생기는 가짜 변경을 막는다 (SPEC 3.2).
     gitutil.run_git(vault, "config", "core.precomposeunicode", "true")
+    # 한글 파일명이 git 출력에서 8진수로 깨져 보이지 않게 한다.
+    gitutil.run_git(vault, "config", "core.quotePath", "false")
     if gitutil.get_config(vault, "user.name") is None:
         gitutil.run_git(vault, "config", "user.name", GIT_USER_NAME)
     if gitutil.get_config(vault, "user.email") is None:
