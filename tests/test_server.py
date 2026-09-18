@@ -1,0 +1,57 @@
+import os
+import sys
+
+import pytest
+from mcp import ClientSession
+from mcp.client.stdio import StdioServerParameters
+from mcp.client.stdio import stdio_client
+
+from memory_server.server import SERVER_NAME, create_server
+
+
+@pytest.fixture
+def anyio_backend():
+    return "asyncio"
+
+
+@pytest.mark.anyio
+async def test_server_has_no_tools(initialized):
+    server = create_server(initialized)
+    assert server.name == SERVER_NAME
+    assert await server.list_tools() == []
+    assert await server.list_resources() == []
+    assert await server.list_prompts() == []
+
+
+@pytest.mark.anyio
+async def test_stdio_handshake_and_logging(initialized):
+    """실제 stdio로 붙어서 initialize와 tools/list가 되고, stdout이 MCP 전용인지 본다."""
+    params = StdioServerParameters(
+        command=sys.executable,
+        args=["-m", "memory_server.cli", "serve"],
+        env={**os.environ, "MEMORY_HOME": str(initialized.home)},
+    )
+    async with stdio_client(params) as (read, write):
+        async with ClientSession(read, write) as session:
+            info = await session.initialize()
+            assert info.server_info.name == SERVER_NAME
+            tools = await session.list_tools()
+            assert tools.tools == []
+    log = initialized.server_log.read_text(encoding="utf-8")
+    assert "server created tools=0" in log
+
+
+def test_server_without_memory_home_exits_2_with_empty_stdout():
+    import subprocess
+
+    env = {k: v for k, v in os.environ.items() if k != "MEMORY_HOME"}
+    proc = subprocess.run(
+        [sys.executable, "-m", "memory_server.cli", "serve"],
+        capture_output=True,
+        text=True,
+        env=env,
+        timeout=30,
+    )
+    assert proc.returncode == 2
+    assert proc.stdout == ""
+    assert "MEMORY_HOME" in proc.stderr
