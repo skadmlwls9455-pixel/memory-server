@@ -75,7 +75,10 @@ class B2Client:
 
     def authorize(self, key_id: str, key: str) -> None:
         cred = base64.b64encode(f"{key_id}:{key}".encode("utf-8")).decode("ascii")
-        data = self._t(AUTH_URL, {"Authorization": f"Basic {cred}"}, None)
+        try:
+            data = self._t(AUTH_URL, {"Authorization": f"Basic {cred}"}, None)
+        except B2Error as e:
+            raise B2Error(f"[인증 b2_authorize_account] {e}") from None
         self.account_id = data["accountId"]
         self._token = data["authorizationToken"]
         api = data.get("apiInfo", {}).get("storageApi", {})
@@ -89,7 +92,10 @@ class B2Client:
         if not self._token:
             raise B2Error("먼저 authorize 해야 한다.")
         headers = {"Authorization": self._token, "Content-Type": "application/json"}
-        return self._t(f"{self.api_url}/b2api/v3/{op}", headers, json.dumps(payload).encode("utf-8"))
+        try:
+            return self._t(f"{self.api_url}/b2api/v3/{op}", headers, json.dumps(payload).encode("utf-8"))
+        except B2Error as e:
+            raise B2Error(f"[{op}] {e}") from None
 
     # ------------------------------------------------------------------ 버킷
 

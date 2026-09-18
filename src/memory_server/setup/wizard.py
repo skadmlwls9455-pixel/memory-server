@@ -227,12 +227,26 @@ class Wizard:
     def _master_client(self) -> B2Client:
         if self._master is None:
             _say("B2 마스터 키(또는 전체 권한 키)가 필요하다. B2 콘솔 → Application Keys 에서 만든다. 여기서만 쓰고 저장하지 않는다.")
-            kid = ask_secret("마스터 keyID")
-            key = ask_secret("마스터 applicationKey")
-            self._master = (kid, key)
-        c = B2Client()
-        c.authorize(*self._master)
-        return c
+            _say("keyID 는 보통 25자(마스터 키면 12자), applicationKey 는 31자(마스터 키면 40자)다. 앞뒤 공백·줄바꿈은 자동으로 뺀다.")
+        last_error = None
+        for attempt in range(3):
+            if self._master is None:
+                kid = "".join(ask_secret("keyID").split())
+                key = "".join(ask_secret("applicationKey").split())
+                _say(f"  keyID: {kid[:4]}…{kid[-4:]} ({len(kid)}자), applicationKey: {key[:3]}…{key[-3:]} ({len(key)}자)")
+                if not confirm("  이 값으로 시도할까?", True):
+                    continue
+                self._master = (kid, key)
+            c = B2Client()
+            try:
+                c.authorize(*self._master)
+                return c
+            except B2Error as e:
+                last_error = e
+                self._master = None
+                _say(f"  인증 실패: {e}")
+                _say("  keyID 와 applicationKey 를 서로 바꿔 넣지 않았는지, 콘솔에서 새로 만든 키인지(만든 직후 한 번만 보인다) 확인한다.")
+        raise SetupAbort(f"B2 인증에 3번 실패했다: {last_error}")
 
     def step_b2(self) -> None:
         cfg = load_config(self.paths.config_toml)
