@@ -180,3 +180,6 @@ I wrote the specification and made the design calls. The implementation was
 done step by step with an AI coding assistant against that spec, with each
 stage gated on its acceptance tests and every deviation logged in
 `DECISIONS.md`. The live tests (T08–T10) were run on my own machine.
+
+## Copyright
+Copyright (c) 2026 Katherine Nahm (남의진). All rights reserved. See [LICENSE](LICENSE).
