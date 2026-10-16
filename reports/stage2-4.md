@@ -1,70 +1,72 @@
-# 2·3·4단계 구현 보고 (색인, 회상, core, rebuild, stats, 백업, 열 점수, 확장)
+# Stages 2·3·4 implementation report (indexing, recall, core, rebuild, stats, backup, heat score, expansion)
 
-2026-09-18 · 구현 환경: 리눅스 x86_64 컨테이너, CPU 4코어, RAM 15GB. 맥북 측정(T08)과 B2·age 실물 시험(T09, T10)은 사용자 몫이다.
+_English translation of stage2-4_KO.md. If the two differ, the Korean original is authoritative._
 
-## 시험 결과 요약
+2026-09-18 · Implementation environment: Linux x86_64 container, 4 CPU cores, 15GB RAM. MacBook measurement (T08) and physical B2·age trials (T09, T10) are the user's part.
 
-| ID | 시험 | 결과 | 비고 |
+## Test results summary
+
+| ID | Test | Result | Notes |
 | --- | --- | --- | --- |
-| T05 | 정답 20 / 무관 10 (bge-m3) | **통과** 20/20, 10/10 | `scripts/run_t05.py`. 조정 구간 0.435~0.50, 채택 0.45 (D-050). e5-small: 0.83 에서 19/20, 9/10 통과 |
-| T06 | core 거부 3종 + 근거 무효화 | 통과 | `tests/test_core.py` |
-| T07 | db 삭제 뒤 rebuild 동일성 | 통과 | 같은 질의 → 같은 ID·순서·유사도·열, 상태·core 동일. `tests/test_rebuild_stats.py` |
-| T08 | 맥북 측정·Claude Desktop | **미실행 (사용자)** | 컨테이너 참고값은 아래. `scripts/measure_t08.py`, SETUP.md 3장 |
-| T09 | 잠금 삭제 거부, 키 권한 | **미실행 (사용자)** | SETUP.md 6장에 절차 |
-| T10 | 빈 디렉터리 복원 | 절차만 검증 | 가짜 age·rclone 으로 복원→rebuild→검색 통과 (`test_t10_shape_...`). 실물은 사용자 |
-| T11 | 48h 공백, 실패 재시도, 재업로드 | 통과 | `tests/test_backup.py`, 가짜 provider |
-| T12 | 감쇠·가열·6h·묶음·확장 | 통과 | `tests/test_heat.py`, `tests/test_recall.py` |
-| T04 재실행 | "수정은 재색인됨" | 통과 | `test_external_edit_is_reindexed_by_doctor` |
+| T05 | 20 correct / 10 irrelevant (bge-m3) | **Pass** 20/20, 10/10 | `scripts/run_t05.py`. Tuning range 0.435–0.50, adopted 0.45 (D-050). e5-small: passes at 0.83 with 19/20, 9/10 |
+| T06 | 3 kinds of core rejection + evidence invalidation | Pass | `tests/test_core.py` |
+| T07 | rebuild identity after deleting db | Pass | Same query → same IDs·order·similarity·heat, same state·core. `tests/test_rebuild_stats.py` |
+| T08 | MacBook measurement·Claude Desktop | **Not run (user)** | Container reference values below. `scripts/measure_t08.py`, SETUP.md chapter 3 |
+| T09 | Lock deletion rejection, key permissions | **Not run (user)** | Procedure in SETUP.md chapter 6 |
+| T10 | Restore into an empty directory | Procedure only verified | Restore→rebuild→search passes with fake age·rclone (`test_t10_shape_...`). Physical run is the user's |
+| T11 | 48h gap, failure retry, re-upload | Pass | `tests/test_backup.py`, fake provider |
+| T12 | Decay·heating·6h·group ordering·expansion | Pass | `tests/test_heat.py`, `tests/test_recall.py` |
+| T04 rerun | "Edits are reindexed" | Pass | `test_external_edit_is_reindexed_by_doctor` |
 
 ```
-uv run pytest                      → 통과 (실제 모델 테스트 1개 skip)
-MEMORY_REAL_MODEL=1 pytest tests/test_real_model.py → 통과
+uv run pytest                      → pass (1 real-model test skipped)
+MEMORY_REAL_MODEL=1 pytest tests/test_real_model.py → pass
 ```
 
-## T05 상세 (bge-m3, 가상 노트 64개)
+## T05 details (bge-m3, 64 fictional notes)
 
-| min_similarity | 조정용 정답 top3 | 조정용 무관 공백 |
+| min_similarity | Tuning correct top3 | Tuning irrelevant empty |
 | --- | --- | --- |
 | 0.45 | 15/15 | 10/10 |
 | 0.50 | 15/15 | 10/10 |
 | 0.55 | 12/15 | 10/10 |
 | 0.60 | 8/15 | 10/10 |
 
-평가용(분리): 정답 유사도 최소 0.499 / 중앙 0.648 / 최대 0.735, 무관 1위 유사도 최소 0.304 / 중앙 0.376 / 최대 0.423. 실패 사례 없음. recall 지연 중앙값 135ms(CPU).
+Evaluation set (separate): correct-answer similarity min 0.499 / median 0.648 / max 0.735, top-1 irrelevant similarity min 0.304 / median 0.376 / max 0.423. No failure cases. Median recall latency 135ms (CPU).
 
-주의: 이름이 없는 짧은 질의는 경계에 걸린다. "회사 어디 다녀?" 0.45, "직장" 0.425, "어느 회사에서 일해?" 0.582. 그래서 구간 아래쪽 0.45 를 골랐다. 노트와 질의를 같은 사람이 만들어 점수가 후할 수 있으므로 실사용 뒤 실패 사례로 재조정한다.
+Caution: short queries without names sit on the boundary. "회사 어디 다녀?" ("Where do you work?") 0.45, "직장" ("workplace") 0.425, "어느 회사에서 일해?" ("Which company do you work at?") 0.582. That is why 0.45, at the low end of the range, was chosen. The notes and queries were made by the same person, so the scores may be generous; retune with failure cases after real use.
 
-e5-small 실패 사례: "전 직장이 어디였고 왜 그만뒀어?" 정답 유사도 0.824 (임계 0.83 아래), "농구 트래블링 규칙" → "PR 리뷰 규칙" 0.841. e5 는 유사도 폭이 좁아(무관 0.77~0.84, 정답 0.82~0.92) 경계가 더 날카롭다.
+e5-small failure cases: "전 직장이 어디였고 왜 그만뒀어?" ("Where was your previous job and why did you quit?") correct-answer similarity 0.824 (below the 0.83 threshold), "농구 트래블링 규칙" ("basketball traveling rule") → "PR 리뷰 규칙" ("PR review rules") 0.841. e5 has a narrow similarity spread (irrelevant 0.77–0.84, correct 0.82–0.92), so the boundary is sharper.
 
-## T08 컨테이너 참고값 (맥북 값이 아니다)
+## T08 container reference values (these are not MacBook values)
 
-| 항목 | 값 |
+| Item | Value |
 | --- | --- |
-| 모델 로딩 | 9.5s (캐시 웜) / 20s (첫 실행) |
-| 로딩 후 RSS | 약 2.0GB, 피크 2.7GB |
-| remember 평균 | 178ms (임베딩 포함) |
-| recall 중앙값 / p95 | 111ms / 121ms |
-| sqlite-vec | v0.1.9 로딩·코사인 KNN 통과 |
+| Model loading | 9.5s (warm cache) / 20s (first run) |
+| RSS after loading | about 2.0GB, peak 2.7GB |
+| remember average | 178ms (including embedding) |
+| recall median / p95 | 111ms / 121ms |
+| sqlite-vec | v0.1.9 loading·cosine KNN pass |
 
-## 미구현·미검증
+## Not implemented·not verified
 
-- T08, T09, T10 실물: 사용자 실행. 절차는 SETUP.md, RESTORE.md.
-- stats 의 원격 사용량은 `rclone size` 결과를 백업 실행 때 갱신한다. 별도 주기 조회는 없다.
-- 4단계 "T05 를 다시 돌려 나빠지지 않았는지 비교": 확장 경로가 들어간 상태에서 T05 를 돌린 것이 위 결과다 (상위 3건 기준 변화 없음).
+- T08, T09, T10 physical runs: run by the user. Procedures in SETUP.md, RESTORE.md.
+- Remote usage in stats is updated from `rclone size` results when a backup runs. There is no separate periodic query.
+- Stage 4 "rerun T05 and compare that it did not get worse": the results above are from running T05 with the expansion path in place (no change on the top-3 basis).
 
-## 테스트 쪽을 고친 부분
+## Changes made on the test side
 
-- 픽스처가 `config.toml` 의 임베더를 `fake/ngram-hash` 로 바꾼다 (D-036). 이에 따라 `test_load_after_init`, `test_init_files_are_loadable` 의 모델 확인 위치를 옮겼다.
-- `test_tools_via_stdio_roundtrip`: 1단계의 `indexed is False` 를 `indexed is True` 로 (색인이 생겼으므로).
-- `test_no_secrets_in_default_config`: "key" 단어 검사 → 비밀 값 패턴 검사 (키체인 서비스 이름에 key 가 들어간다).
-- `min_similarity` 기본값 검사 0.45 → 0.47 → 0.45 (T05 조정 결과 반영).
-- 가짜 임베더의 유사도 특성에 맞춰 recall 테스트의 예시 문장을 조정했다 (구조 검증이 목적).
+- Fixtures change the embedder in `config.toml` to `fake/ngram-hash` (D-036). Accordingly, the model-check locations in `test_load_after_init`, `test_init_files_are_loadable` were moved.
+- `test_tools_via_stdio_roundtrip`: Stage 1's `indexed is False` changed to `indexed is True` (because indexing now exists).
+- `test_no_secrets_in_default_config`: the "key" word check → a secret value pattern check (keychain service names contain key).
+- `min_similarity` default check 0.45 → 0.47 → 0.45 (reflecting T05 tuning results).
+- Adjusted example sentences in recall tests to fit the fake embedder's similarity characteristics (the purpose is structural verification).
 
-## 파일에 쓰는 경로 (추가분)
+## Paths that write to files (additions)
 
-- `index/db.py`: `db/memory.db` (캐시). `rebuild.py`: 임시 DB 생성 후 `os.replace` 로 교체 (캐시).
-- `core.py`: `core.json`, `core.md` 를 임시 파일 + `os.replace` (노트가 아닌 생성물, D-042).
-- `backup/`: `runtime/backup/` 아래 staging, pending 암호문, `backup_state.json`. vault 에는 쓰지 않는다. 원격 삭제 API 는 구현하지 않았다.
-- `backup/restore.py`: 빈 대상 디렉터리에만 푼다.
+- `index/db.py`: `db/memory.db` (cache). `rebuild.py`: creates a temporary DB, then replaces with `os.replace` (cache).
+- `core.py`: `core.json`, `core.md` via temporary file + `os.replace` (generated artifacts that are not notes, D-042).
+- `backup/`: staging, pending ciphertext, `backup_state.json` under `runtime/backup/`. Does not write to the vault. A remote delete API was not implemented.
+- `backup/restore.py`: extracts only into an empty target directory.
 
-기억 노트의 본문·제목을 다시 쓰거나 노트를 지우는 경로는 여전히 없다.
+There is still no path that rewrites the body·title of memory notes or deletes notes.

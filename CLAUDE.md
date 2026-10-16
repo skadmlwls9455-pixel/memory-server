@@ -1,13 +1,15 @@
 # CLAUDE.md
 
-이 저장소는 SPEC.md(개인 AI 기억 시스템 명세서 v0.3)를 구현한다. SPEC.md가 원본이고 이 파일은 작업 규칙만 적는다.
+_English translation of CLAUDE_KO.md. If the two differ, the Korean original is authoritative._
 
-## 작업 규칙
+This repository implements SPEC.md (Personal AI Memory System Specification v0.3). SPEC.md is the source of truth, and this file records only working rules.
 
-- SPEC.md 11장의 순서대로, 사용자가 지시한 파트만 구현한다. 지시받지 않은 다음 단계를 미리 만들지 않는다.
-- 모든 경로는 환경변수 `MEMORY_HOME` 기준이다. 코드에 `~/memory`를 하드코딩하지 않는다.
-- 테스트는 임시 디렉터리만 쓴다. 실제 `~/memory/vault`는 절대 건드리지 않는다.
-- 삭제 도구, 본문 덮어쓰기, 유료 API, SPEC 10장의 보류 항목은 추가하지 않는다.
-- 결정이 필요하면 `DECISIONS.md`에 결정과 이유를 적는다. 판단 순서는 원본 보존, 현재 사실의 정확성, 복원 가능성이다.
-- 파트가 끝나면 실행한 테스트, 실패 항목, 미구현 항목을 보고한다.
-- stdout은 MCP 전용이다. 로그는 stderr와 파일(`runtime/server.log`)로 보낸다. 로그에 노트 본문과 검색어는 남기지 않는다.
+## Working rules
+
+- Following the order in SPEC.md chapter 11, implement only the part the user instructed. Do not build the next stage ahead of time without instruction.
+- All paths are relative to the environment variable `MEMORY_HOME`. Do not hardcode `~/memory` in the code.
+- Tests use only temporary directories. Never touch the real `~/memory/vault`.
+- Do not add delete tools, body overwriting, paid APIs, or the deferred items in SPEC chapter 10.
+- When a decision is needed, write the decision and its reason in `DECISIONS.md`. The order of priority for judgment is: preserving the original, accuracy of current facts, recoverability.
+- When a part is finished, report the tests run, failing items, and unimplemented items.
+- stdout is for MCP only. Logs go to stderr and a file (`runtime/server.log`). Do not leave note bodies or search queries in logs.

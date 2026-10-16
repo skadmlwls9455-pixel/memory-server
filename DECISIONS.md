@@ -1,226 +1,228 @@
 # DECISIONS.md
 
-SPEC.md에 없거나 두 갈래로 읽히는 부분을 정할 때 여기에 결정과 이유를 적는다.
-판단 순서는 원본 보존, 현재 사실의 정확성, 복원 가능성이다.
+_English translation of DECISIONS_KO.md. If the two differ, the Korean original is authoritative._
 
-## 1단계 1-1 뼈대
+When deciding on parts that are not in SPEC.md or that can be read two ways, the decision and its reason are written here.
+The order of priority for judgment is: preserving the original, accuracy of current facts, recoverability.
 
-### D-001 mcp 2.x의 `MCPServer`를 쓴다
-- 결정: 공식 `mcp` SDK 2.x를 쓰고 `mcp.server.mcpserver.MCPServer`로 서버를 만든다.
-- 이유: SPEC 2장이 말하는 `FastMCP`는 2.x에서 `MCPServer`로 이름만 바뀌었다. 새 프로젝트에서 1.x에 고정하면 보안 수정과 Claude Desktop 호환을 놓친다. 같은 SDK의 같은 클래스라 SPEC의 뜻(공식 SDK, stdio)은 그대로다.
+## Stage 1, 1-1 Skeleton
 
-### D-002 `MEMORY_HOME`은 필수이고 기본값이 없다
-- 결정: 환경변수가 없거나 상대 경로면 시작을 거부한다. `~/memory`로 대체하지 않는다.
-- 이유: CLAUDE.md 규칙. 테스트나 시험용 홈(`~/memory-test`)과 실제 vault가 섞이는 사고를 코드 수준에서 막는다.
+### D-001 Use `MCPServer` from mcp 2.x
+- Decision: Use the official `mcp` SDK 2.x and build the server with `mcp.server.mcpserver.MCPServer`.
+- Reason: The `FastMCP` referred to in SPEC chapter 2 was only renamed to `MCPServer` in 2.x. Pinning a new project to 1.x would miss security fixes and Claude Desktop compatibility. It is the same class in the same SDK, so the intent of the SPEC (official SDK, stdio) is unchanged.
 
-### D-003 저장소 루트가 SPEC 3.1의 `server/`다
-- 결정: 이 Git 저장소 자체가 `~/memory/server/`에 놓이는 코드 디렉터리다. 패키지 이름은 `memory_server`, CLI 이름은 `memory`.
-- 이유: SPEC 2장에서 서버 코드는 별도 Git 저장소다. `memory`라는 패키지 이름은 너무 일반적이라 충돌 여지가 있어 `memory_server`로 했다. CLI는 SPEC이 부르는 대로 `memory`다.
+### D-002 `MEMORY_HOME` is required and has no default
+- Decision: If the environment variable is missing or is a relative path, refuse to start. Do not fall back to `~/memory`.
+- Reason: CLAUDE.md rule. Prevents, at the code level, accidents where a test or trial home (`~/memory-test`) gets mixed up with the real vault.
 
-### D-004 ID의 시각은 로컬 시간대다
-- 결정: `YYYYMMDD-HHMMSS`는 `datetime.now().astimezone()` 기준 로컬 시각이다. 이벤트 `ts`와 `created`도 오프셋이 붙은 로컬 ISO 8601이다.
-- 이유: SPEC 3.3 예시가 `+09:00`이다. ID와 `created`가 같은 시계를 쓰면 파일명만 보고 만든 시각을 알 수 있다. 시간대가 바뀌어도 ID 뒤 4자리 무작위와 존재 검사로 충돌은 막힌다.
+### D-003 The repository root is `server/` from SPEC 3.1
+- Decision: This Git repository itself is the code directory placed at `~/memory/server/`. The package name is `memory_server`, the CLI name is `memory`.
+- Reason: In SPEC chapter 2, the server code is a separate Git repository. The package name `memory` is too generic and could collide, so it was named `memory_server`. The CLI is `memory`, as the SPEC calls it.
 
-### D-005 제목 정리 뒤 비면 `무제`로 저장한다
-- 결정: 금지 문자와 공백을 빼고 60자로 자른 뒤 남는 게 없으면 파일명 제목을 `무제`로 한다. 개행과 탭은 공백 하나로 바꾼다.
-- 이유: 파일명이 ` <id>.md`처럼 공백으로 시작하지 않게 한다. 노트 안의 `# 제목`은 원문 그대로 두므로 원본은 보존된다.
+### D-004 Times in IDs are in the local time zone
+- Decision: `YYYYMMDD-HHMMSS` is local time based on `datetime.now().astimezone()`. Event `ts` and `created` are also local ISO 8601 with an offset.
+- Reason: The SPEC 3.3 example is `+09:00`. If the ID and `created` use the same clock, the creation time can be known from the file name alone. Even if the time zone changes, collisions are prevented by the 4 random characters at the end of the ID and an existence check.
 
-### D-006 `memory init`은 이번 실행이 만든 파일만 커밋한다
-- 결정: init은 없는 폴더와 파일만 만들고, 그것만 `git add` 후 커밋한다. 이미 있는 파일은 읽지도 고치지도 않는다.
-- 이유: 두 번 실행해도 안전해야 한다. 사용자가 고친 `config.toml`을 init이 몰래 커밋하면 doctor의 "커밋되지 않은 변경" 처리와 역할이 겹친다.
+### D-005 If the title is empty after sanitizing, save it as `무제`
+- Decision: After removing forbidden characters and whitespace and truncating to 60 characters, if nothing remains, the file-name title becomes `무제` ("Untitled"). Newlines and tabs are replaced with a single space.
+- Reason: Keeps the file name from starting with a space, like ` <id>.md`. The `# 제목` (title) inside the note is left as the original text, so the original is preserved.
 
-### D-007 vault 저장소의 커밋 작성자를 고정한다
-- 결정: vault 저장소에 `user.name`/`user.email`이 없으면 `memory-server` / `memory-server@localhost`를 로컬 설정으로 넣는다.
-- 이유: 개인 기억 저장소는 원격이 없고 한 사람만 쓴다. 전역 Git 설정이 없는 맥에서 첫 저장이 커밋 실패로 끝나는 일을 막는다. 이미 설정이 있으면 건드리지 않는다.
+### D-006 `memory init` commits only the files created by this run
+- Decision: init creates only folders and files that do not exist, and `git add`s and commits only those. It does not read or modify files that already exist.
+- Reason: It must be safe to run twice. If init silently committed a `config.toml` the user had edited, its role would overlap with doctor's handling of "uncommitted changes".
 
-### D-008 init은 `core.json`을 만들고 `core.md`는 만들지 않는다
-- 결정: `core.json`은 `{"entries": []}`로 만든다. `core.md`는 2단계 `update_core`가 `core.json`에서 생성한다.
-- 이유: SPEC 3.1이 `core.json`을 원본, `core.md`를 생성물로 둔다. 생성 로직 없이 빈 `core.md`를 두면 원본과 어긋난 파일이 생긴다.
+### D-007 Fix the commit author of the vault repository
+- Decision: If the vault repository has no `user.name`/`user.email`, set `memory-server` / `memory-server@localhost` as local config.
+- Reason: The personal memory repository has no remote and is used by one person. Prevents the first save from ending in a commit failure on a Mac with no global Git config. If a setting already exists, it is not touched.
 
-### D-009 `.lock` 잠금은 기본 30초 대기 후 실패한다
-- 결정: `write_lock`은 `flock(LOCK_EX|LOCK_NB)`를 폴링하며 기본 30초까지 기다리고, 넘으면 `LockTimeout`을 낸다.
-- 이유: 백업 CLI가 staging 복사 중 잠금을 잡을 수 있다. 무한 대기는 MCP 도구 호출을 멈추게 하므로 상한을 둔다. 값은 호출자가 바꿀 수 있다.
+### D-008 init creates `core.json` and does not create `core.md`
+- Decision: `core.json` is created as `{"entries": []}`. `core.md` is generated from `core.json` by `update_core` in Stage 2.
+- Reason: SPEC 3.1 treats `core.json` as the source and `core.md` as a generated artifact. Placing an empty `core.md` without the generation logic would create a file that disagrees with the source.
 
-### D-010 `tag_rules.yaml`은 분류별 허용 이름 목록이다
-- 결정: 다섯 분류(`주제`, `사람`, `프로젝트`, `상태`, `시기`)가 모두 있어야 하고, `values`가 비면 이름은 자유, 채우면 그 목록만 허용한다.
-- 이유: SPEC 4장은 "tag_rules.yaml로 검증한다"고만 한다. 처음에는 분류만 강제하고, 쓰다가 이름이 흩어지면 목록을 채워 조이는 쪽이 저장 누락을 덜 낸다 (설계 원칙 7).
+### D-009 The `.lock` lock waits 30 seconds by default, then fails
+- Decision: `write_lock` polls `flock(LOCK_EX|LOCK_NB)`, waiting up to 30 seconds by default, and raises `LockTimeout` if exceeded.
+- Reason: The backup CLI may hold the lock while copying to staging. An infinite wait would stall MCP tool calls, so there is an upper bound. The caller can change the value.
 
-### D-011 CLI 안내 출력도 stderr로 보낸다
-- 결정: `memory init` 같은 CLI의 사람용 메시지도 stdout이 아니라 stderr로 낸다.
-- 이유: 같은 실행 파일이 `memory serve`로 MCP 서버가 된다. 어느 하위 명령이든 stdout에 아무것도 쓰지 않는 습관을 유지한다.
+### D-010 `tag_rules.yaml` is a list of allowed names per category
+- Decision: All five categories (`주제` (topic), `사람` (person), `프로젝트` (project), `상태` (status), `시기` (period)) must be present; if `values` is empty, names are free, and if filled, only that list is allowed.
+- Reason: SPEC chapter 4 only says "validate with tag_rules.yaml". Enforcing only the categories at first, and tightening by filling the lists if names become scattered with use, produces fewer missed saves (design principle 7).
 
-## 1단계 1-2 remember, read_memory
+### D-011 CLI informational output also goes to stderr
+- Decision: Human-facing messages from CLIs such as `memory init` are also emitted to stderr, not stdout.
+- Reason: The same executable becomes the MCP server with `memory serve`. Keep the habit of writing nothing to stdout in any subcommand.
 
-### D-012 도구 오류는 `{error: {code, message, retryable, ...}}` 딕셔너리로 돌려준다
-- 결정: MCP의 `isError` 문자열 대신 구조화된 결과값으로 오류를 낸다. 추가 정보(필드명, 충돌한 노트의 ID와 전문)는 같은 객체에 싣는다.
-- 이유: SPEC 4장의 `FACT_CONFLICT`는 기존 노트 전문을 오류에 실어야 한다. 문자열 오류보다 구조화된 값이 모델의 한 번 재시도에 맞다.
+## Stage 1, 1-2 remember, read_memory
 
-### D-013 10분 중복 방지는 `created` 이벤트의 `input_hash`로 판단한다
-- 결정: 정규화한 입력(제목, 본문, 태그, type, source, fact_key, links, supersedes)의 SHA-256을 `created` 이벤트 data에 넣고, 최근 10분의 이벤트에서 같은 해시를 찾으면 그 ID를 돌려준다. 별도 상태 파일이나 메모리 캐시는 두지 않는다.
-- 이유: 재시작해도 유지되고, 이벤트 로그가 이미 원본이라 새 저장 위치가 늘지 않는다. 해시만 넣으므로 이벤트에 본문이 들어가지 않는다.
+### D-012 Tool errors are returned as a `{error: {code, message, retryable, ...}}` dictionary
+- Decision: Errors are emitted as a structured result value instead of MCP's `isError` string. Additional information (field name, ID and full text of the conflicting note) is carried in the same object.
+- Reason: SPEC chapter 4's `FACT_CONFLICT` must carry the full text of the existing note in the error. A structured value suits the model's single retry better than a string error.
 
-### D-014 T01의 "같은 초에 두 번"은 입력이 다른 두 호출로 본다
-- 결정: 같은 초라도 입력이 다르면 ID가 다른 노트 둘을 만든다. 입력까지 같으면 10분 규칙이 우선해서 기존 ID를 돌려준다.
-- 이유: 두 규칙이 겹치는 경우는 "같은 입력"뿐이고, 그때는 SPEC 5장의 중복 방지가 의도한 상황이다.
+### D-013 10-minute duplicate prevention is judged by the `input_hash` of the `created` event
+- Decision: The SHA-256 of the normalized input (title, body, tags, type, source, fact_key, links, supersedes) is put in the `created` event data, and if the same hash is found among events from the last 10 minutes, that ID is returned. No separate state file or in-memory cache is kept.
+- Reason: It persists across restarts, and since the event log is already a source, no new storage location is added. Only the hash is stored, so the body does not go into the event.
 
-### D-015 본문에 예약 제목 줄과 `---` 시작을 금지한다
-- 결정: 본문 안에 `## 관련`이나 `## 덧붙임`과 정확히 같은 줄이 있거나 본문이 `---`로 시작하면 `INVALID_INPUT`이다. `## 관련 사항`처럼 다른 줄은 허용한다.
-- 이유: 두 제목은 파서가 구획을 나누는 표식이다. 본문에 섞이면 `amend`가 덧붙일 위치와 `read_memory`의 본문 경계가 흔들린다.
+### D-014 T01's "twice in the same second" is read as two calls with different inputs
+- Decision: Even within the same second, if inputs differ, two notes with different IDs are created. If the inputs are also the same, the 10-minute rule takes precedence and the existing ID is returned.
+- Reason: The only case where the two rules overlap is "same input", and that is the situation SPEC chapter 5's duplicate prevention is meant for.
 
-### D-016 `## 덧붙임`은 생성 때 만들지 않고 첫 `amend` 때 파일 끝에 덧붙인다
-- 결정: 새 노트에는 `## 덧붙임`을 넣지 않는다. 1-3의 `amend`가 없는 경우 제목을 포함해 파일 끝에 덧붙이고, 있으면 한 줄만 더한다.
-- 이유: 둘 다 파일 끝에 덧붙이는 작업이라 본문을 다시 쓰지 않는다. 빈 제목이 모든 노트에 들어가는 것보다 낫다.
+### D-015 Reserved heading lines and a leading `---` are forbidden in the body
+- Decision: If the body contains a line exactly equal to `## 관련` (related) or `## 덧붙임` (amendments), or if the body starts with `---`, it is `INVALID_INPUT`. Other lines such as `## 관련 사항` (related matters) are allowed.
+- Reason: The two headings are markers the parser uses to divide sections. If they are mixed into the body, the position where `amend` appends and the body boundary of `read_memory` become unstable.
 
-### D-017 `reflection`은 `source=inference`여야 한다 (양방향)
-- 결정: `source=inference`이면 `type=reflection`이어야 하고, `type=reflection`이면 `source=inference`여야 한다.
-- 이유: SPEC 4장 표의 "reflection: `source=inference`일 때만"을 그대로 적용했다. 사용자가 말한 내용은 episode나 fact다.
+### D-016 `## 덧붙임` is not created at creation time; it is appended to the end of the file at the first `amend`
+- Decision: New notes do not include `## 덧붙임`. `amend` in 1-3, if it is absent, appends it including the heading to the end of the file; if present, it adds just one line.
+- Reason: Both are append-to-end-of-file operations, so the body is not rewritten. This is better than putting an empty heading in every note.
 
-### D-018 `links` 대상은 존재하는 노트여야 하고 `## 관련`에 `- 관련: [[<제목> <id>|<제목>]]`로 쓴다
-- 결정: 없는 ID를 links에 넣으면 `NOT_FOUND`다. 위키링크 표시는 대상 노트의 현재 제목을 읽어서 만든다.
-- 이유: Obsidian 그래프에서 깨진 링크가 생기지 않게 한다. 제목은 생성 뒤 바뀌지 않으므로 표시가 어긋날 일이 없다.
+### D-017 `reflection` must be `source=inference` (bidirectional)
+- Decision: If `source=inference`, then `type=reflection` is required, and if `type=reflection`, then `source=inference` is required.
+- Reason: Applied "reflection: only when `source=inference`" from the SPEC chapter 4 table as is. What the user said is an episode or a fact.
 
-### D-019 vault 저장소에 `core.quotePath=false`를 설정한다
-- 결정: init이 `core.quotePath`를 끈다.
-- 이유: 한글 파일명이 `git status`나 `ls-files`에서 8진수로 깨져 보이면 doctor의 경로 비교와 사람의 확인이 모두 불편하다. 동작에는 영향이 없다.
+### D-018 `links` targets must be existing notes and are written in `## 관련` as `- 관련: [[<제목> <id>|<제목>]]`
+- Decision: Putting a nonexistent ID in links is `NOT_FOUND`. The wikilink display is built by reading the current title of the target note.
+- Reason: Prevents broken links in the Obsidian graph. Titles do not change after creation, so the display will not go out of sync.
 
-## 1단계 1-3 정정, 보충, 보관
+### D-019 Set `core.quotePath=false` on the vault repository
+- Decision: init turns off `core.quotePath`.
+- Reason: If Korean file names show up garbled as octal in `git status` or `ls-files`, both doctor's path comparison and human inspection become inconvenient. It has no effect on behavior.
 
-### D-020 기존 노트 변경은 `mutations.py` 한 곳에서만 하고 결과를 바이트 단위로 검증한다
-- 결정: `append_amendment`는 결과가 `기존 내용 + 덧붙인 부분`인지, `set_status`는 frontmatter의 `status`·`superseded_by` 줄 외에 한 바이트도 다르지 않은지 확인한 뒤에만 임시 파일과 rename으로 적용한다. 어긋나면 `ForbiddenChange`를 내고 쓰지 않는다.
-- 이유: SPEC 3.3의 "허용된 변경 세 가지"를 리뷰가 아니라 코드가 보장하게 한다. `store.py`에는 기존 파일에 쓰는 경로가 없다.
+## Stage 1, 1-3 Supersede, amend, archive
 
-### D-021 이미 대체된 노트는 다시 대체할 수 없다 (`INVALID_SUPERSEDES`)
-- 결정: `supersedes` 대상의 상태가 `superseded`면 거부하고 `superseded_by`를 알려 준다. `archived`인 노트는 대체할 수 있다.
-- 이유: 대체 사슬이 갈라지면 "현재 유효한 사실"이 둘이 된다. 보관은 회상 제외일 뿐이라 정정 대상이 될 수 있다.
+### D-020 Changes to existing notes are made only in `mutations.py`, and the result is verified byte by byte
+- Decision: `append_amendment` checks that the result is `existing content + appended part`, and `set_status` checks that not a single byte differs other than the frontmatter `status`·`superseded_by` lines; only then is the change applied via a temporary file and rename. If it does not match, it raises `ForbiddenChange` and does not write.
+- Reason: Have the code, not review, guarantee SPEC 3.3's "three allowed changes". `store.py` has no path that writes to existing files.
 
-### D-022 보관된 fact의 `fact_key`는 새 active fact가 쓸 수 있고, 그 뒤 `unarchive`는 `FACT_CONFLICT`다
-- 결정: 유일성은 active 노트끼리만 본다. 보관된 노트를 되살릴 때 같은 키의 active 노트가 있으면 그 노트의 ID와 전문을 실어 거부한다.
-- 이유: SPEC 4장 "같은 키의 active 노트는 하나뿐"과 6장 "`unarchive`는 fact_key 충돌은 거부"를 그대로 따랐다.
+### D-021 An already superseded note cannot be superseded again (`INVALID_SUPERSEDES`)
+- Decision: If the status of the `supersedes` target is `superseded`, reject and report `superseded_by`. A note that is `archived` can be superseded.
+- Reason: If the supersede chain forks, there would be two "currently valid facts". Archive only means exclusion from recall, so an archived note can be a target of correction.
 
-### D-023 정정은 `created` 이벤트 하나로 기록한다
-- 결정: 새 노트의 `created` 이벤트 data에 `supersedes`와 `reason`을 넣는다. 옛 노트의 상태 변경에 별도 이벤트를 남기지 않는다.
-- 이유: SPEC 3.4의 아홉 가지 이벤트에 `superseded`가 없고, 예시가 `created`에 `supersedes`를 싣는다. 새 노트, 옛 노트, 이벤트는 한 잠금 안에서 바뀌고 한 커밋에 들어간다.
+### D-022 The `fact_key` of an archived fact can be used by a new active fact, and after that `unarchive` is `FACT_CONFLICT`
+- Decision: Uniqueness is checked only among active notes. When reviving an archived note, if there is an active note with the same key, reject it, carrying that note's ID and full text.
+- Reason: Followed SPEC chapter 4 "only one active note per key" and chapter 6 "`unarchive` rejects a fact_key conflict" as is.
 
-### D-024 대체된 노트의 `archive`는 `NOT_ACTIVE`로 거부한다
-- 결정: `archive`는 active 노트만 받는다. 이미 보관이면 `no_change`, 대체됐으면 거부.
-- 이유: 대체된 노트는 이미 기본 회상에서 빠져 있다. 상태를 `archived`로 바꾸면 `superseded_by` 정보와 상태가 어긋난다.
+### D-023 A supersede is recorded as a single `created` event
+- Decision: `supersedes` and `reason` are put in the data of the new note's `created` event. No separate event is left for the status change of the old note.
+- Reason: SPEC 3.4's nine event types do not include `superseded`, and the example carries `supersedes` in `created`. The new note, old note and event change within one lock and go into one commit.
 
-### D-025 `archive`와 `unarchive`는 `reason`이 필수다
-- 결정: 비어 있으면 `INVALID_INPUT`. 이유는 이벤트 data에 남기고 노트에는 쓰지 않는다.
-- 이유: SPEC 6장이 두 도구 입력에 `reason`을 둔다. 노트 본문을 건드리지 않으면서 감사 기록은 이벤트 로그가 맡는다.
+### D-024 `archive` of a superseded note is rejected with `NOT_ACTIVE`
+- Decision: `archive` accepts only active notes. If already archived, `no_change`; if superseded, reject.
+- Reason: A superseded note is already excluded from default recall. Changing its status to `archived` would make the status disagree with the `superseded_by` information.
 
-### D-026 `amend`도 10분 중복 방지를 적용한다
-- 결정: 같은 노트에 같은 정규화 문장이 10분 안에 다시 오면 줄을 더하지 않고 `DUPLICATE_INPUT` 경고와 함께 같은 ID를 돌려준다. `amended` 이벤트의 `input_hash`로 판단하고 본문은 이벤트에 넣지 않는다.
-- 이유: SPEC 5장의 중복 방지는 "같은 도구에 같은 정규화 입력"이라 `remember`에 한정되지 않는다.
+### D-025 `archive` and `unarchive` require `reason`
+- Decision: If empty, `INVALID_INPUT`. The reason is kept in the event data and not written to the note.
+- Reason: SPEC chapter 6 puts `reason` in the input of both tools. The event log handles the audit record without touching the note body.
 
-## 1단계 1-4 doctor, 입력 방어
+### D-026 `amend` also applies 10-minute duplicate prevention
+- Decision: If the same normalized sentence comes to the same note again within 10 minutes, no line is added and the same ID is returned with a `DUPLICATE_INPUT` warning. It is judged by the `input_hash` of the `amended` event, and the body is not put in the event.
+- Reason: SPEC chapter 5's duplicate prevention is "same normalized input to the same tool", so it is not limited to `remember`.
 
-### D-027 1단계 doctor의 "알려진 상태" 기준은 vault의 Git HEAD다
-- 결정: DB가 없는 동안 `git status`로 삭제(D), 수정(M), 미추적(??)을 찾아 SPEC 5장 표대로 처리한다. 2단계에서는 `indexer` 훅으로 "DB에 없는 노트 색인"과 "재색인"이 붙는다.
-- 이유: 서버가 하는 모든 변경은 커밋되므로 HEAD와 다른 것은 "커밋 전에 죽은 서버 변경"이거나 "외부 변경" 둘 중 하나다. 별도 상태 파일 없이 이 둘을 가릴 수 있다.
+## Stage 1, 1-4 doctor, input defense
 
-### D-028 HEAD 대비 변경이 허용된 세 가지 안이면 서버 변경, 아니면 외부 수정으로 본다
-- 결정: 수정된 노트의 HEAD 내용과 현재 내용을 비교해 "덧붙임만 추가" 또는 "status/superseded_by 줄만 변경"이면 이벤트 없이 커밋한다. 그 외는 `external_edit` 이벤트를 남기고 커밋한다.
-- 이유: 커밋 직전에 죽은 `amend`나 `archive`를 Obsidian 편집으로 잘못 기록하지 않기 위해서다. 판정 기준이 3.3의 허용 변경과 같아 별도 규칙이 늘지 않는다.
+### D-027 The "known state" baseline for Stage 1 doctor is the vault's Git HEAD
+- Decision: While there is no DB, deletions (D), modifications (M) and untracked files (??) are found with `git status` and handled per the SPEC chapter 5 table. In Stage 2, "index notes not in the DB" and "reindex" are attached via an `indexer` hook.
+- Reason: Every change the server makes is committed, so anything differing from HEAD is one of two things: "a server change that died before commit" or "an external change". These two can be told apart without a separate state file.
 
-### D-029 `recovered` 이벤트에 노트에서 다시 계산한 `input_hash`를 넣는다
-- 결정: created 이벤트 없이 발견된 노트는 제목, 본문, 태그 등으로 remember 입력 해시를 재구성해 `recovered` 이벤트에 넣고, 10분 중복 방지는 `created`와 `recovered` 둘 다 본다.
-- 이유: 이벤트 쓰기 전에 죽으면 모델은 응답을 못 받고 같은 입력으로 재시도한다. 해시가 없으면 그 재시도가 중복 노트를 만든다 (T04 "재시작 뒤 중복 없음").
+### D-028 If the change relative to HEAD is within the three allowed kinds, it is treated as a server change; otherwise as an external edit
+- Decision: The HEAD content and current content of a modified note are compared, and if it is "only an amendment added" or "only the status/superseded_by lines changed", it is committed without an event. Otherwise, an `external_edit` event is left and it is committed.
+- Reason: To avoid wrongly recording an `amend` or `archive` that died just before commit as an Obsidian edit. The judgment criterion is the same as the allowed changes in 3.3, so no separate rule is added.
 
-### D-030 doctor가 정정 일관성을 보정한다 (SPEC 5장 표에 없는 항목)
-- 결정: 어떤 노트의 `supersedes`가 가리키는 노트가 아직 `superseded`가 아니면 `status=superseded`, `superseded_by`를 채운다. 같은 fact_key의 active가 둘 이상이면 경고만 한다.
-- 이유: 새 노트를 쓴 뒤 옛 노트를 바꾸기 전에 죽으면 같은 키의 active가 둘이 된다. 새 노트의 frontmatter가 의도를 담고 있으므로 이를 마저 적용하는 것이 "현재 사실의 정확성"에 맞다. 허용된 변경 안에서만 고친다.
+### D-029 Put an `input_hash` recomputed from the note into the `recovered` event
+- Decision: For a note found without a created event, the remember input hash is reconstructed from its title, body, tags, etc. and put in the `recovered` event, and 10-minute duplicate prevention looks at both `created` and `recovered`.
+- Reason: If the process dies before writing the event, the model gets no response and retries with the same input. Without the hash, that retry would create a duplicate note (T04 "no duplicates after restart").
 
-### D-031 외부 삭제 복원 대상은 노트, `_system/` 전부, `.gitignore`, `core.md`다
-- 결정: 그 밖의 삭제는 경고만 하고 복원하지 않는다. 미추적 파일 중 `_system/`과 `core.md`는 커밋하고, 나머지(`.tmp-*` 포함)는 건드리지 않고 경고한다.
-- 이유: SPEC 5장 표는 "노트나 `_system/` 파일"을 복원 대상으로 든다. 사용자가 vault에 둔 다른 파일까지 서버가 되살리면 삭제 의사를 무시하는 셈이다.
+### D-030 doctor corrects supersede consistency (an item not in the SPEC chapter 5 table)
+- Decision: If the note pointed to by some note's `supersedes` is not yet `superseded`, fill in `status=superseded` and `superseded_by`. If there are two or more active notes with the same fact_key, only warn.
+- Reason: If the process dies after writing the new note but before changing the old note, there are two active notes with the same key. The new note's frontmatter carries the intent, so finishing applying it fits "accuracy of current facts". It fixes only within the allowed changes.
 
-### D-032 잘린 이벤트 로그는 마지막 줄부터 거슬러 JSON이 아닌 꼬리 전체를 조각으로 옮긴다
-- 결정: 개행이 없는 마지막 조각뿐 아니라, 개행은 있어도 JSON이 아닌 마지막 줄들도 함께 `runtime/recovery/<파일명>.<시각>.fragment`로 옮긴다. 중간의 깨진 줄은 읽을 때 건너뛰고 손대지 않는다.
-- 이유: 조각을 지우지 않고 옮기므로 원본이 보존된다. 중간 줄을 고치면 "기존 줄은 고치지 않는다"(3.4)를 어긴다.
+### D-031 Targets for restoring external deletions are notes, all of `_system/`, `.gitignore`, and `core.md`
+- Decision: Other deletions are only warned about and not restored. Among untracked files, `_system/` and `core.md` are committed, and the rest (including `.tmp-*`) are left untouched with a warning.
+- Reason: The SPEC chapter 5 table names "note or `_system/` files" as restore targets. If the server also revived other files the user placed in the vault, it would be ignoring their intent to delete.
 
-### D-033 비밀 탐지는 형식 패턴만 쓰고 값은 오류에 싣지 않는다
-- 결정: `sk-`, `AKIA`, `-----BEGIN`, `AGE-SECRET-KEY-1`, GitHub/GitLab/Slack/Google/Stripe 토큰, JWT, B2 앱 키 등 알려진 형식만 거부한다. "비밀번호:" 같은 키워드 휴리스틱은 넣지 않는다. 오류에는 패턴 이름만 싣는다.
-- 이유: SPEC 4장은 알려진 형식 거부이고 완전한 탐지를 요구하지 않는다. 키워드 휴리스틱은 "비밀번호를 바꿨다"류의 정상 기억을 막아 저장 누락을 만든다 (설계 원칙 7). age 개인키는 이 시스템의 복구 열쇠라 특히 넣었다.
+### D-032 For a truncated event log, scan back from the last line and move the entire non-JSON tail to a fragment
+- Decision: Not only the last fragment without a newline, but also final lines that have newlines yet are not JSON are moved together to `runtime/recovery/<파일명>.<시각>.fragment` (<file name>.<time>). Broken lines in the middle are skipped when reading and left untouched.
+- Reason: The fragment is moved, not deleted, so the original is preserved. Fixing middle lines would violate "existing lines are not modified" (3.4).
 
-### D-034 서버 시작 시 doctor 실패는 로그만 남기고 서버는 뜬다
-- 결정: `startup_doctor`는 예외를 삼키고 stderr·로그에 남긴다. `.git`이 없으면 doctor가 `VAULT_NOT_GIT`을 기록하고, 쓰기 도구는 매 호출마다 `.git`을 확인해 같은 코드로 거부한다. 읽기는 된다.
-- 이유: 진단 실패가 회상까지 막으면 안 된다. 쓰기 차단은 도구 호출 시점에 다시 확인하므로 시작 뒤에 `.git`이 사라져도 막힌다.
+### D-033 Secret detection uses only format patterns, and the value is not carried in the error
+- Decision: Reject only known formats such as `sk-`, `AKIA`, `-----BEGIN`, `AGE-SECRET-KEY-1`, GitHub/GitLab/Slack/Google/Stripe tokens, JWT, B2 app keys. Keyword heuristics such as "비밀번호:" ("password:") are not included. Only the pattern name is carried in the error.
+- Reason: SPEC chapter 4 is about rejecting known formats and does not require complete detection. Keyword heuristics would block normal memories like "I changed my password" and cause missed saves (design principle 7). The age private key was included specifically because it is this system's recovery key.
 
-## 2·3·4단계 (색인, 회상, core, rebuild, stats, 백업, 열 점수, 확장)
+### D-034 If doctor fails at server startup, only a log is left and the server still starts
+- Decision: `startup_doctor` swallows exceptions and records them to stderr·log. If `.git` is missing, doctor records `VAULT_NOT_GIT`, and write tools check `.git` on every call and reject with the same code. Reads work.
+- Reason: A diagnostic failure must not block recall too. Write blocking is rechecked at tool-call time, so it still blocks even if `.git` disappears after startup.
 
-### D-035 구성 루트 `app.py` 하나로 조립한다
-- 결정: 설정, DB, 임베더, 색인기, 회상기, 저장소를 `build_app()` 이 조립한다. 서버, CLI, 테스트가 같은 함수를 쓴다. DB 열기 실패는 `db_error` 로 두고 저장은 계속된다.
-- 이유: 저장 성공, 색인 성공, 백업 성공을 서로 다른 상태로 보고하려면(원칙 6) 색인 계층이 없어도 저장 계층이 서야 한다.
+## Stages 2·3·4 (indexing, recall, core, rebuild, stats, backup, heat score, expansion)
 
-### D-036 테스트는 결정적 가짜 임베더를 쓴다
-- 결정: `fake/ngram-hash` (문자 2-gram 해시, 64차원) 를 테스트 픽스처가 config 에 넣는다. 실제 모델 시험은 `MEMORY_REAL_MODEL=1` 과 `scripts/run_t05.py`, `scripts/measure_t08.py` 로 한다.
-- 이유: 200개 넘는 테스트가 매번 3GB 모델을 올릴 수 없다. 가짜 임베더는 구조(필터, 확장, 묶음 정렬, rebuild 동일성)를 검증하고 품질은 T05 가 검증한다.
+### D-035 Assemble everything in a single composition root, `app.py`
+- Decision: `build_app()` assembles config, DB, embedder, indexer, recaller, and store. The server, CLI and tests use the same function. A DB open failure is kept as `db_error`, and saving continues.
+- Reason: To report save success, index success and backup success as distinct states (principle 6), the storage layer must stand even without the index layer.
 
-### D-037 DB `memories` 에 `used_at` 열을 더한다
-- 결정: SPEC 3.5 표의 열에 `used_at` 을 추가한다. 6시간 재신고 판정에 쓴다. `heat_at` 은 마지막 가열(또는 생성) 시각이다.
-- 이유: 생성 직후 `heat_at = created` 라서 heat_at 만으로는 "6시간 안에 이미 신고됐는지" 를 구분할 수 없다. DB 는 캐시라 rebuild 로 재생된다.
+### D-036 Tests use a deterministic fake embedder
+- Decision: Test fixtures put `fake/ngram-hash` (character 2-gram hash, 64 dimensions) into config. Real model trials are done with `MEMORY_REAL_MODEL=1` and `scripts/run_t05.py`, `scripts/measure_t08.py`.
+- Reason: More than 200 tests cannot load a 3GB model every time. The fake embedder verifies structure (filters, expansion, group ordering, rebuild identity), and T05 verifies quality.
 
-### D-038 벡터 검색은 KNN 200건을 뽑은 뒤 필터해 상위 50을 만든다
-- 결정: sqlite-vec KNN 으로 200건을 받고 status, tags, type 을 적용해 최대 50건을 만든 뒤 `min_similarity` 로 자른다.
-- 이유: vec0 의 KNN 은 필터 전 순위라 필터 후 50건을 보장하려면 넉넉히 받아야 한다. 개인 규모(수천 건)에서 200 은 충분하고 비용은 작다. 늘어나면 sqlite-vec 의 메타데이터 필터로 옮긴다.
+### D-037 Add a `used_at` column to DB `memories`
+- Decision: Add `used_at` to the columns in the SPEC 3.5 table. It is used for the 6-hour re-report check. `heat_at` is the time of the last heating (or creation).
+- Reason: Right after creation `heat_at = created`, so heat_at alone cannot distinguish "whether it was already reported within 6 hours". The DB is a cache, so it is regenerated by rebuild.
 
-### D-039 `SIMILAR_EXISTS` 는 색인 시점에 KNN 5건으로 판단한다
-- 결정: 새 노트를 임베딩한 직후 가장 가까운 active 노트 5건 중 유사도 0.92 이상을 경고에 싣는다. 색인이 실패하면 경고도 없다.
-- 이유: 임베딩을 한 번만 계산해서 색인과 유사 검사에 같이 쓴다.
+### D-038 Vector search takes 200 KNN results, then filters to make the top 50
+- Decision: Get 200 results with sqlite-vec KNN, apply status, tags, type to make up to 50, then cut by `min_similarity`.
+- Reason: vec0's KNN ranks before filtering, so to guarantee 50 after filtering it must fetch generously. At personal scale (thousands of items), 200 is enough and the cost is small. If it grows, move to sqlite-vec's metadata filters.
 
-### D-040 입력 필터(tags, type)는 확장 경로에도 똑같이 적용한다
-- 결정: 링크·태그 확장 후보도 active, `min_similarity` 외에 recall 인자의 tags(AND) 와 type 을 통과해야 한다.
-- 이유: 필터가 벡터 경로에만 걸리면 확장으로 필터 밖 노트가 섞여 "모두 포함하는 AND 조건" 이 깨진다.
+### D-039 `SIMILAR_EXISTS` is judged at index time with 5 KNN results
+- Decision: Right after embedding a new note, among the 5 nearest active notes, those with similarity 0.92 or higher are carried in the warning. If indexing fails, there is no warning either.
+- Reason: The embedding is computed only once and used for both indexing and the similarity check.
 
-### D-041 태그 확장은 상위 3개 태그 중 하나라도 공유하는 노트를 공유 수 순으로 본다
-- 결정: 벡터 결과에서 `주제`, `사람`, `프로젝트` 태그 빈도 상위 3개를 고르고, 그중 하나 이상을 가진 active 노트를 공유 태그 수 내림차순, 그 안에서 묶음 정렬해 최대 5건.
-- 이유: SPEC 7.2 "3개를 공유하는" 을 "셋 다" 로 읽으면 결과가 거의 안 나온다. 공유 수를 1차 기준으로 두면 셋 다 공유하는 노트가 자연히 앞선다.
+### D-040 Input filters (tags, type) are applied identically to expansion paths
+- Decision: Link·tag expansion candidates must also pass, in addition to active and `min_similarity`, the recall arguments' tags (AND) and type.
+- Reason: If filters apply only to the vector path, expansion would mix in notes outside the filter and break the "AND condition that includes all".
 
-### D-042 core.json 과 core.md 는 덮어쓴다 (노트가 아니다)
-- 결정: `update_core` 는 두 파일을 임시 파일 + rename 으로 통째로 바꾸고 커밋한다. `core_updated` 이벤트의 ids 에는 근거 ID 를 넣는다.
-- 이유: SPEC 9 "이전 버전은 Git 이력에 남는다". 본문 덮어쓰기 금지는 기억 노트에 대한 규칙이다.
+### D-041 Tag expansion looks at notes that share at least one of the top 3 tags, ordered by share count
+- Decision: From the vector results, pick the top 3 `주제`, `사람`, `프로젝트` tags by frequency, and take active notes having one or more of them, in descending order of number of shared tags and group-ordered within that, up to 5.
+- Reason: Reading SPEC 7.2 "sharing 3" as "all three" yields almost no results. Using share count as the primary criterion naturally puts notes sharing all three first.
 
-### D-043 core 글자 수는 문서 제목 + 등장하는 절 제목 + 항목 텍스트 합계다
-- 결정: `핵심 요약`(문서 제목), 항목이 있는 절 제목, 각 항목 text 의 길이를 더한다. 근거 ID 는 세지 않는다.
-- 이유: SPEC 9 "제목과 항목 텍스트 합계는 1,500자 이하" 의 가장 자연스러운 읽기다.
+### D-042 core.json and core.md are overwritten (they are not notes)
+- Decision: `update_core` replaces both files wholesale with a temporary file + rename and commits. The ids of the `core_updated` event contain the evidence IDs.
+- Reason: SPEC 9 "previous versions remain in Git history". The prohibition on overwriting bodies is a rule for memory notes.
 
-### D-044 rebuild 는 임시 DB 에 만들고 검증한 뒤 `os.replace` 로 교체한다
-- 결정: `memory.db.rebuild-<난수>` 에 색인하고 행 수 = 벡터 수 = 색인 수, index_meta 존재를 확인한 뒤 교체한다. 실패하면 임시 파일을 지우고 기존 DB 를 둔다. 서버가 켜진 채 rebuild 하면 서버를 재시작해야 한다.
-- 이유: DB 는 캐시라 교체가 허용된다. 검증 전 교체는 반쯤 만든 DB 로 회상하게 만든다.
+### D-043 The core character count is the document title + section headings that appear + the sum of entry text
+- Decision: Add the lengths of `핵심 요약` (core summary; the document title), section headings that have entries, and each entry's text. Evidence IDs are not counted.
+- Reason: The most natural reading of SPEC 9 "the total of titles and entry text is 1,500 characters or less".
 
-### D-045 `mark_used` 는 신고마다 `used` 이벤트를 커밋한다
-- 결정: 가열된 ID 가 있을 때만 `used` 이벤트 한 줄을 쓰고 이벤트 파일을 커밋한다. 6시간 안 재신고는 이벤트도 커밋도 없다.
-- 이유: SPEC 8.1 "모든 변경은 로컬 Git 에 커밋된다". 6시간 규칙 덕분에 커밋 수는 하루 몇 개다.
+### D-044 rebuild builds into a temporary DB, verifies it, then replaces with `os.replace`
+- Decision: Index into `memory.db.rebuild-<난수>` (<random number>), confirm row count = vector count = index count and that index_meta exists, then replace. On failure, delete the temporary file and keep the existing DB. If rebuild is run while the server is on, the server must be restarted.
+- Reason: The DB is a cache, so replacing it is allowed. Replacing before verification would make recall run on a half-built DB.
 
-### D-046 백업 자격증명은 rclone 설정 파일이 아니라 환경변수로만 넘긴다
-- 결정: macOS 에서는 `security find-generic-password` 로 키체인에서 읽어 `RCLONE_CONFIG_<REMOTE>_ACCOUNT/KEY` 환경변수로 rclone 자식 프로세스에만 준다. 리눅스(CI)는 환경변수에서 읽는다.
-- 이유: SPEC 8.3 "B2 키는 macOS 키체인에 넣고 설정 파일에는 참조 이름만". rclone 의 자체 설정 파일은 난독화일 뿐이라 만들지 않는다.
+### D-045 `mark_used` commits a `used` event for each report
+- Decision: Only when there are heated IDs, write one `used` event line and commit the event file. A re-report within 6 hours produces neither an event nor a commit.
+- Reason: SPEC 8.1 "every change is committed to local Git". Thanks to the 6-hour rule, the number of commits is a few per day.
 
-### D-047 업로드 실패한 암호문은 `runtime/backup/pending/` 에 두고 해시가 맞을 때만 재시도한다
-- 결정: 상태 파일의 sha256 과 파일이 일치할 때만 같은 이름으로 다시 올린다. 재업로드가 verified 되어도 `captured_at` 이 더 새로울 때만 최신성이 바뀐다.
-- 이유: SPEC 8.2 4번과 T11 "재업로드가 최신성을 갱신하지 않음".
+### D-046 Backup credentials are passed only via environment variables, not the rclone config file
+- Decision: On macOS, read from the keychain with `security find-generic-password` and give them only to the rclone child process as `RCLONE_CONFIG_<REMOTE>_ACCOUNT/KEY` environment variables. Linux (CI) reads from environment variables.
+- Reason: SPEC 8.3 "put the B2 key in the macOS keychain and only the reference name in the config file". rclone's own config file is merely obfuscated, so it is not created.
 
-### D-048 복원 리허설 날짜는 `backup_state.json` 에 둔다
-- 결정: `memory restore-drill-done` 이 `runtime/backup/backup_state.json` 의 `last_restore_drill` 을 쓴다. vault 에는 넣지 않는다.
-- 이유: 리허설은 기기·운영 상태이지 기억이 아니다. 새 기기로 복원하면 다시 리허설해야 하므로 runtime 에 남는 게 맞다.
+### D-047 Ciphertext that failed to upload is kept in `runtime/backup/pending/` and retried only when the hash matches
+- Decision: Re-upload under the same name only when the file matches the sha256 in the state file. Even if a re-upload is verified, freshness changes only when `captured_at` is newer.
+- Reason: SPEC 8.2 item 4 and T11 "re-upload does not update freshness".
 
-### D-049 restore 는 서버 코드가 스냅샷 안에 있으므로 두 단계로 부트스트랩한다
-- 결정: RESTORE.md 는 먼저 `age` 와 `tar` 로 `server/` 만 꺼내 `uv sync` 한 뒤, 그 코드의 `memory restore` 로 안전 검사(절대 경로, 상위 이동, 링크 거부, 빈 디렉터리 필수)를 거쳐 전체를 푼다.
-- 이유: 맥북을 잃은 상황에서는 서버 코드도 스냅샷에서 나와야 한다. 안전 추출은 표준 tar 가 아니라 서버 코드가 보장한다.
+### D-048 The restore drill date is kept in `backup_state.json`
+- Decision: `memory restore-drill-done` writes `last_restore_drill` in `runtime/backup/backup_state.json`. It is not put in the vault.
+- Reason: A drill is device·operational state, not a memory. Restoring to a new device requires drilling again, so it is right for it to stay in runtime.
 
-### D-050 T05 결과로 기본 `min_similarity` 를 0.45, `relevance_calibrated = true` 로 둔다
-- 결정: bge-m3 기준 조정 가능 구간은 0.435~0.50 이고 스크립트가 고른 중간값은 0.468 이었다. 그러나 이름이 없는 짧은 질의("회사 어디 다녀?" = 0.45, "직장" = 0.425)가 구간 중간 아래로 떨어져서, 구간 아래쪽인 0.45 를 골랐다. 평가용 질의는 0.45 에서도 정답 20/20, 무관 10/10 이다 (무관 1위 최대 0.423). e5-small 은 0.83. 모델을 바꾸면 `run_t05.py` 를 다시 돌린다.
-- 이유: SPEC 7.1 "T05 의 질의로 조정해 config.toml 에 적는다". 정답을 놓치는 쪽(조용한 실패)보다 유사도 0.43 짜리 무관 노트 하나가 섞이는 쪽이 덜 해롭고, 모델은 similarity 값을 같이 받는다. 평가용 질의(정답 20, 무관 10)는 조정용과 분리했지만 노트와 질의를 같은 사람(구현자)이 만들어 점수가 후할 수 있다. 실사용 뒤 실패 사례가 쌓이면 다시 조정한다.
+### D-049 Because the server code is inside the snapshot, restore bootstraps in two steps
+- Decision: RESTORE.md first extracts only `server/` with `age` and `tar` and runs `uv sync`, then unpacks the whole thing with that code's `memory restore`, going through safety checks (rejecting absolute paths, parent traversal, links; empty directory required).
+- Reason: In a situation where the MacBook is lost, the server code must also come out of the snapshot. Safe extraction is guaranteed by the server code, not by standard tar.
 
-### D-051 설치·시험 절차를 `memory setup` 마법사로 자동화한다
-- 결정: SETUP.md 의 사람 절차 중 B2 계정 가입·2FA·마스터 키 발급, 종이 인쇄, Claude Desktop 대화를 뺀 전부를 `memory setup` 이 실행한다. B2 버킷·잠금·수명주기·키는 B2 네이티브 API 를 직접 불러 만든다(외부 CLI 의존 없음). 마스터 키와 age 개인키는 `getpass` 로 받아 메모리에만 두고, 업로드 키만 키체인에 `security -i`(stdin)로 쓴다. `golive` 는 명시적으로 이름을 줄 때만 돈다.
-- 이유: 사용자가 이 부분을 모른다고 했고, 구현자는 클라우드 컨테이너라 사용자의 맥북·계정을 만질 수 없다. 비밀값을 채팅으로 받으면 대화 저장소와 저장소 커밋 경로에 남을 위험이 생긴다. 마법사는 사용자 기계 안에서만 비밀값을 다룬다. 마법사의 순수 부분(B2 API, 설정 병합, plist, config 편집)은 테스트했고 실행 부분은 맥에서만 검증된다.
+### D-050 Based on T05 results, the default `min_similarity` is set to 0.45 and `relevance_calibrated = true`
+- Decision: For bge-m3, the tunable range is 0.435–0.50, and the midpoint chosen by the script was 0.468. However, short queries without names ("회사 어디 다녀?" ("Where do you work?") = 0.45, "직장" ("workplace") = 0.425) fell below the middle of the range, so 0.45, at the low end of the range, was chosen. Evaluation queries are still correct 20/20 and irrelevant 10/10 at 0.45 (maximum top-1 irrelevant 0.423). e5-small is 0.83. If the model is changed, rerun `run_t05.py`.
+- Reason: SPEC 7.1 "tune with the T05 queries and write it in config.toml". Missing a correct answer (a silent failure) is more harmful than mixing in one irrelevant note at similarity 0.43, and the model receives the similarity value along with it. Evaluation queries (20 correct, 10 irrelevant) were kept separate from tuning queries, but the notes and queries were made by the same person (the implementer), so the scores may be generous. If failure cases accumulate after real use, retune.
 
-### D-052 서버 시작 직후 백그라운드에서 임베딩 모델을 미리 올린다 (`embedding.preload`, 기본 true)
-- 결정: `memory serve` 가 App 을 조립한 뒤 데몬 스레드에서 `embedder.preload()` 를 부른다. 실패해도 로그만 남기고 첫 호출 때 다시 시도한다. 로딩과 encode 는 한 잠금으로 직렬화한다. `preload = false` 로 끌 수 있다.
-- 이유: SPEC 2 는 "첫 recall 또는 첫 색인 때 올린다" 고 했는데, 그 뜻은 모델 로딩 실패가 저장을 막지 않게 하라는 것이다. 백그라운드 로딩은 그 성질을 유지하면서 첫 대화의 20초 대기를 없앤다. T08 에서 사용자가 체감한 지연이 이것이었다. SPEC 문구와 다른 점은 이 항목으로 기록한다.
+### D-051 Automate the installation·trial procedure with a `memory setup` wizard
+- Decision: `memory setup` executes all of the human procedures in SETUP.md except B2 account sign-up·2FA·master key issuance, paper printing, and Claude Desktop conversations. The B2 bucket·lock·lifecycle·keys are created by calling the B2 native API directly (no external CLI dependency). The master key and age private key are taken with `getpass` and kept only in memory, and only the upload key is written to the keychain with `security -i` (stdin). `golive` runs only when its name is given explicitly.
+- Reason: The user said they do not know this part, and the implementer is a cloud container so it cannot touch the user's MacBook·accounts. Receiving secret values through chat creates the risk that they remain in conversation storage and the repository commit path. The wizard handles secret values only inside the user's machine. The pure parts of the wizard (B2 API, config merging, plist, config editing) were tested, and the execution parts are verified only on the Mac.
 
-### D-053 `store.py` 를 패키지로 나누고 recall 응답 필드를 SPEC 6 의 목록으로 줄인다
-- 결정: `store/` = models(자료형·상한), validation(검증), base(공통·읽기), writes(쓰기 도구), usage(mark_used). `MemoryStore` 는 믹스인 합성이고 외부 import 경로(`memory_server.store.MemoryStore`)는 그대로다. recall 항목에서 `heat`, `created` 를 빼고 비어 있는 `tags`, `fact_key`, `warnings`, `pending_index` 키는 생략한다. recall·remember 설명문의 중복 규칙 요약을 remember 에만 둔다.
-- 이유: 700줄 한 파일은 읽기 어렵고, 응답과 설명문의 군더더기는 대화마다 토큰을 먹는다. `heat` 는 정렬에만 쓰이고 모델이 볼 이유가 없다. SPEC 6 이 정한 필드(id, 제목, 태그, type, source, fact_key, status, 유사도, 경로)만 남겼다.
+### D-052 Preload the embedding model in the background right after server startup (`embedding.preload`, default true)
+- Decision: After `memory serve` assembles the App, it calls `embedder.preload()` in a daemon thread. Even if it fails, it only logs and retries on the first call. Loading and encode are serialized with one lock. It can be turned off with `preload = false`.
+- Reason: SPEC 2 said "load at the first recall or first indexing", and its intent is that a model loading failure must not block saving. Background loading keeps that property while removing the 20-second wait in the first conversation. This was the delay the user felt in T08. The difference from the SPEC wording is recorded in this entry.
+
+### D-053 Split `store.py` into a package and reduce recall response fields to the list in SPEC 6
+- Decision: `store/` = models (data types·limits), validation (validation), base (common·reads), writes (write tools), usage (mark_used). `MemoryStore` is a mixin composition, and the external import path (`memory_server.store.MemoryStore`) is unchanged. From recall items, `heat` and `created` are removed, and empty `tags`, `fact_key`, `warnings`, `pending_index` keys are omitted. The summary of duplicate rules in the recall·remember descriptions is kept only in remember.
+- Reason: A single 700-line file is hard to read, and padding in responses and descriptions eats tokens in every conversation. `heat` is used only for ordering, and there is no reason for the model to see it. Only the fields set by SPEC 6 (id, title, tags, type, source, fact_key, status, similarity, path) were kept.
